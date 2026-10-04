@@ -40,7 +40,9 @@ async function ensureIndexes(db) {
   ]);
   await db.collection('chunks').createIndexes([
     { key: { doc_id: 1, chunk_index: 1 }, name: 'doc_chunk' },
-    { key: { doc_id: 1, chunk_sha256: 1 }, name: 'doc_sha' }
+    { key: { doc_id: 1, chunk_sha256: 1 }, name: 'doc_sha' },
+    // lexical side of hybrid retrieval (BM25-like textScore over the masked text + breadcrumb)
+    { key: { embed_text: 'text' }, name: 'lexical', default_language: 'english', language_override: 'text_language' }
   ]);
   await db.collection('chunk_staging').createIndex({ doc_id: 1, chunk_index: 1 }, { name: 'doc_chunk' });
   await db.collection('ingest_jobs').createIndex({ status: 1, updated_at: -1 }, { name: 'status_updated' });
@@ -196,6 +198,18 @@ export async function exactSearch(vector, key, { k = 10, filter = {} } = {}) {
     }
   }
   return top;
+}
+
+/** Full-text ranking over chunk text (Mongo text index). Returns [{ chunk_id, score }]. */
+export async function lexicalSearch(query, { k = 20, filter = {} } = {}) {
+  const rows = await (await mongo()).collection('chunks')
+    .find({ $text: { $search: query }, ...filterToMongo(filter) }, { projection: { score: { $meta: 'textScore' } } })
+    .sort({ score: { $meta: 'textScore' } }).limit(k).toArray();
+  return rows.map((r) => ({ chunk_id: r._id, score: r.score }));
+}
+
+export async function getDocuments(ids) {
+  return (await mongo()).collection('documents').find({ _id: { $in: ids } }).toArray();
 }
 
 /** { doc_id, space, sensitivity, file_type } (values or arrays) -> Mongo filter */

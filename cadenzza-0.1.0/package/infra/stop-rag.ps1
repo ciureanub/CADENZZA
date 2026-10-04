@@ -5,10 +5,14 @@
   MongoDB is shut down cleanly through its admin command. Qdrant and Ollama are stopped by PID.
   Only processes whose executable matches the expected binary are touched; anything else on
   those ports is reported and left alone. Never deletes data.
+.PARAMETER Only
+  Stop only these services (mongo, qdrant, ollama).
 #>
+param([string[]]$Only)
 . "$PSScriptRoot\rag-env.ps1"
 
 foreach ($name in $Services.Keys) {
+  if ($Only -and ($Only -notcontains $name)) { continue }
   $svc = $Services[$name]
   $listeners = @(Get-Listeners $svc.Port)
   if (-not $listeners.Count) { "{0,-7} not running" -f $name; continue }

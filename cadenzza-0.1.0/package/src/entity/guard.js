@@ -176,6 +176,13 @@ export function mask(text) {
   return out;
 }
 
+/** Length of the longest protected surface form (for safe hold-back when masking a stream). */
+export function maxSurfaceLength() {
+  let max = 0;
+  for (const e of listEntities()) for (const v of variants(e.canonical, e.aliases)) max = Math.max(max, v.length);
+  return max;
+}
+
 /** Recursively mask strings inside any JSON-serialisable payload. */
 export function maskDeep(value) {
   if (typeof value === 'string') return mask(value);
@@ -191,10 +198,15 @@ export function unmask(text, reason = 'user request') {
   let out = String(text);
   // Query ALL entities regardless of active status — retired entities must still
   // be resolvable for historical pages that were written before retirement.
-  const all = db().prepare('SELECT id, pseudonym FROM protected_entity').all();
+  // Longest pseudonym first and whole-token matches, so CLIENT_A never rewrites CLIENT_AA;
+  // only entities actually present are revealed (each reveal is audited by the vault).
+  const all = db().prepare('SELECT id, pseudonym FROM protected_entity').all()
+    .sort((a, b) => b.pseudonym.length - a.pseudonym.length);
   for (const e of all) {
+    const re = new RegExp(`(?<![A-Za-z0-9_])${escapeRe(e.pseudonym)}(?![A-Za-z0-9_])`, 'g');
+    if (!re.test(out)) continue;
     const real = vault.reveal(e.id, reason);
-    if (real) out = out.replaceAll(e.pseudonym, real);
+    if (real) out = out.replace(re, () => real);
   }
   return out;
 }

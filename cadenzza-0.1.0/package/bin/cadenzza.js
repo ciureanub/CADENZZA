@@ -168,6 +168,44 @@ program.command('doctor')
     process.exitCode = failed ? 1 : 0;
   });
 
+/* ------------------------------------------------------------------ ask */
+
+program.command('ask <question>')
+  .description('Ask the ingested material; the answer streams, then numbered sources')
+  .option('-k, --k <n>', 'chunks to retrieve (default: setting rag_top_k)')
+  .option('--mode <mode>', 'hybrid|dense|exact (default: setting rag_retrieval)')
+  .option('-s, --space <key>', 'only this space')
+  .option('--type <ext>', 'only this file type, e.g. pdf')
+  .option('--json', 'print the full result as JSON')
+  .option('--context', 'print the retrieved (masked) chunk text')
+  .action(async (question, o) => {
+    const { ask } = await import('../src/rag/ask.js');
+    try {
+      const r = await ask(question, {
+        k: o.k ? Number(o.k) : undefined, mode: o.mode,
+        filter: { space: o.space, file_type: o.type },
+        onToken: o.json ? undefined : (d) => process.stdout.write(d),
+        onReplace: o.json ? undefined : (t) => process.stdout.write(`\n[answer re-masked]\n${t}`)
+      });
+      if (o.json) return console.log(JSON.stringify(r, null, 2));
+      console.log('\n');
+      for (const c of r.citations) {
+        const where = [c.title, ...c.heading_path].filter((x, i, a) => x && x !== a[i - 1]).join(' › ');
+        const page = c.page_start ? ` p.${c.page_start}${c.page_end !== c.page_start ? `-${c.page_end}` : ''}` : '';
+        console.log(`  ${c.cited ? '*' : ' '}[${c.n}] ${where}${page}  (${c.file_type}, score ${c.score.toFixed(4)}${c.dense_rank ? `, dense #${c.dense_rank}` : ''}${c.lexical_rank ? `, lexical #${c.lexical_rank}` : ''})`);
+        if (o.context) console.log(`      ${c.text.replace(/\s+/g, ' ').slice(0, 300)}`);
+      }
+      const t = r.timings;
+      console.log(`\n  ${r.refused ? 'REFUSED (not in corpus) | ' : ''}${r.gen_model} via ${r.retrieval_mode}${r.retrieval_fallback ? ' (Qdrant down: exact fallback)' : ''} | embed ${t.embed_ms}ms, search ${t.search_ms}ms, ` +
+        `first token ${t.first_token_ms ?? '-'}ms, generate ${t.generate_ms}ms, total ${t.total_ms}ms | tokens in ${r.tokens.prompt ?? '-'} out ${r.tokens.output ?? '-'}`);
+    } catch (err) {
+      console.error(`error: ${guard.mask(err.message)}`);
+      process.exitCode = 1;
+    } finally {
+      await mongoStore.close();
+    }
+  });
+
 /* ------------------------------------------------------------------ rag */
 
 const ragCmd = program.command('rag').description('Local RAG corpus: ingest, status, maintenance');

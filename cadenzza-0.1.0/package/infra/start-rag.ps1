@@ -4,7 +4,11 @@
 .DESCRIPTION
   Idempotent: a service that is already listening on its port is left alone and reported.
   Creates data/log dirs under CADENZZA_HOME\rag. Never deletes anything.
+  Set CADENZZA_OLLAMA_IGPU=1 to let Ollama use the integrated GPU (Vulkan).
+.PARAMETER Only
+  Start only these services (mongo, qdrant, ollama).
 #>
+param([string[]]$Only)
 . "$PSScriptRoot\rag-env.ps1"
 
 foreach ($d in @($RunDir, $LogDir, (Join-Path $RagDir 'mongo'), (Join-Path $RagDir 'qdrant\storage'), (Join-Path $RagDir 'qdrant\snapshots'))) {
@@ -35,6 +39,7 @@ function Wait-Port([int]$Port, [int]$Seconds) {
 
 $failed = $false
 foreach ($name in $Services.Keys) {
+  if ($Only -and ($Only -notcontains $name)) { continue }
   $svc = $Services[$name]
   $existing = @(Get-Listeners $svc.Port)
   if ($existing.Count) {
@@ -62,6 +67,10 @@ foreach ($name in $Services.Keys) {
     }
     'ollama' {
       $envVars = @{ OLLAMA_HOST = '127.0.0.1:11434'; OLLAMA_NO_CLOUD = '1' }
+      # Opt-in: let Ollama use the integrated GPU (Vulkan). CADENZZA_OLLAMA_IGPU=1/0 wins; otherwise
+      # the flag file rag\ollama-igpu.on (persistent per machine) turns it on.
+      $igpu = if ($env:CADENZZA_OLLAMA_IGPU) { $env:CADENZZA_OLLAMA_IGPU } elseif (Test-Path (Join-Path $RagDir 'ollama-igpu.on')) { '1' } else { '0' }
+      if ($igpu -eq '1') { $envVars['OLLAMA_IGPU_ENABLE'] = '1'; "ollama  integrated GPU enabled (Vulkan)" }
       $p = Start-Child $name $svc.Exe @('serve') $envVars $RagDir
     }
   }
@@ -75,8 +84,8 @@ foreach ($name in $Services.Keys) {
   }
 }
 
-# Single-node replica set: enables multi-document transactions for atomic re-ingest.
-if (Get-Listeners 27017) {
+# Single-node replica set (only when mongo is in scope): enables multi-document transactions for atomic re-ingest.
+if ((-not $Only -or $Only -contains 'mongo') -and (Get-Listeners 27017)) {
   Push-Location $PkgDir
   try { node $MongoAdmin init-rs } finally { Pop-Location }
   if ($LASTEXITCODE -ne 0) { $failed = $true }

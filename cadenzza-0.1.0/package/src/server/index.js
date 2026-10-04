@@ -12,6 +12,7 @@ import { paths } from '../config.js';
 import { importDocument } from './importer.js';
 import * as rag from '../rag/ingest.js';
 import * as mongoStore from '../rag/store/mongo.js';
+import { ask as askQuestion } from '../rag/ask.js';
 
 /** Registry changed: re-mask ingested RAG documents in the background (only once RAG is in use). */
 function scheduleRemask() {
@@ -31,6 +32,9 @@ const VALID_SETTINGS = {
   rag_embed_model: { re: /^[a-z0-9][\w.\-/]*(?::[\w.\-]+)?$/i },
   rag_gen_model:   { re: /^[a-z0-9][\w.\-/]*(?::[\w.\-]+)?$/i },
   rag_top_k:       { re: /^(?:[1-9]|1\d|20)$/ },
+  rag_gen_num_gpu: { re: /^(?:auto|\d{1,3})$/ },
+  rag_retrieval:   { enum: ['hybrid', 'dense', 'exact'] },
+  rag_context_tokens: { re: /^(?:[4-9]\d{2}|[1-3]\d{3}|4000)$/ },
   rag_embed_restricted: { enum: ['0', '1'] },
   rag_create_page: { enum: ['0', '1'] },
   registry_version: { readOnly: true }
@@ -313,6 +317,50 @@ export async function buildServer() {
       }
     }
     return { saved };
+  });
+
+  /* ---------- ask (SSE): sources -> token* -> [replace] -> done | error ---------- */
+  app.post('/api/ask', async (req, reply) => {
+    const { question, k, mode, filter = {} } = req.body || {};
+    const q = String(question || '').trim();
+    if (!q || q.length > 1000) return reply.code(400).send({ error: 'question is required (max 1000 chars)' });
+    if (k !== undefined && !(Number.isInteger(k) && k >= 1 && k <= 20)) return reply.code(400).send({ error: 'k must be 1-20' });
+    if (mode !== undefined && !['hybrid', 'dense', 'exact'].includes(mode)) return reply.code(400).send({ error: 'mode must be hybrid|dense|exact' });
+    const cleanFilter = {};
+    for (const key of ['space', 'sensitivity', 'file_type', 'doc_id']) {
+      const v = filter[key];
+      if (v == null || v === '') continue;
+      if (![v].flat().every((x) => typeof x === 'string' && x.length <= 80)) return reply.code(400).send({ error: `invalid filter ${key}` });
+      cleanFilter[key] = v;
+    }
+
+    reply.hijack();
+    const res = reply.raw;
+    res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache', 'x-accel-buffering': 'no' });
+    const send = (event, data) => { if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); };
+    const ac = new AbortController();
+    res.on('close', () => { if (!res.writableFinished) ac.abort(); });
+    try {
+      const result = await askQuestion(q, {
+        k, mode, filter: cleanFilter, signal: ac.signal,
+        onRetrieval: (sources) => send('sources', sources),
+        onToken: (delta) => send('token', { delta }),
+        onReplace: (text) => send('replace', { text })
+      });
+      send('done', result);
+    } catch (err) {
+      send('error', { error: guard.mask(err.message) });
+    }
+    res.end();
+  });
+
+  /* ---------- explicit, audited reveal of pseudonyms (UI "Reveal names") ---------- */
+  app.post('/api/unmask', async (req, reply) => {
+    const text = String(req.body?.text || '');
+    if (!text || text.length > 50_000) return reply.code(400).send({ error: 'text is required (max 50k chars)' });
+    const reason = String(req.body?.reason || 'ui reveal').slice(0, 120);
+    audit('reveal.request', `chars=${text.length} reason=${reason}`);
+    return { text: guard.unmask(text, reason) };
   });
 
   app.get('/api/audit', async () => db().prepare(

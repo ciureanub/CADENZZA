@@ -136,20 +136,30 @@ export function fuzzy(raw, limit = 50) {
 
 /* ---------------- hybrid: reciprocal rank fusion ---------------- */
 
-export function hybrid(raw, limit = 50, k = 60) {
-  const lists = [strict(raw, limit), fuzzy(raw, limit)];
+/**
+ * Reciprocal rank fusion of ranked lists. Each item needs an id (via idOf) and a 1-based rank;
+ * returns merged items (first occurrence wins, later fields fill gaps) with rrf and modes[].
+ * Shared by page search and RAG chunk retrieval.
+ */
+export function rrf(lists, { k = 60, idOf = (r) => r.id } = {}) {
   const acc = new Map();
   for (const list of lists) {
     for (const r of list) {
-      const cur = acc.get(r.id) || { ...r, mode: 'hybrid', rrf: 0, modes: [] };
+      const id = idOf(r);
+      const cur = acc.get(id) || { ...r, rrf: 0, modes: [] };
       cur.rrf += 1 / (k + r.rank);
       cur.modes.push(r.mode);
-      if (!cur.snippet && r.snippet) cur.snippet = r.snippet;
-      acc.set(r.id, cur);
+      for (const [f, v] of Object.entries(r)) if (cur[f] == null && v != null) cur[f] = v;
+      acc.set(id, cur);
     }
   }
-  return [...acc.values()].sort((a, b) => b.rrf - a.rrf).slice(0, limit)
-    .map((r, i) => ({ ...r, rank: i + 1 }));
+  return [...acc.values()].sort((a, b) => b.rrf - a.rrf);
+}
+
+export function hybrid(raw, limit = 50, k = 60) {
+  return rrf([strict(raw, limit), fuzzy(raw, limit)], { k })
+    .slice(0, limit)
+    .map((r, i) => ({ ...r, mode: 'hybrid', rank: i + 1 }));
 }
 
 export function search(raw, mode = 'hybrid', limit = 50) {
