@@ -37,9 +37,9 @@ Status column: **fixed** = fixed in Phase 0, **planned** = scheduled in a later 
 |---|---|---|---|
 | N1 | `src/entity/patterns.js:17-19` | `salesforce-id` auto-masked ordinary words ("accomplishments", "administrations" → `[REF_SALESFORCE_ID]`). Would corrupt training text before embedding | fixed: require ≥ 2 digits |
 | N1b | same | 18-char IDs with digits in the checksum (`…YA0`) were **not masked** — suffix allowed letters only; real suffix alphabet is `A-Z0-5`. A leak | fixed |
-| N2 | `patterns.js:25` | `jira-key` raises `UTF-8`, `SHA-256`, `ISO-27001` as candidates → review-queue flood at RAG volume | planned (Phase 3) — `todo` test |
+| N2 | `patterns.js:25` | `jira-key` raises `UTF-8`, `SHA-256`, `ISO-27001` as candidates → review-queue flood at RAG volume | fixed (Phase 3): standards/encodings denylist |
 | N3 | `importer.js:62-66`, `:167` | QP decode is byte-wise: `M=C3=BCnchen` → `MÃ¼nchen`. cp1252 decode runs on a string already decoded as UTF-8, so it never works. Hits DE/RO content | fixed (Phase 2): byte-level QP + charset decode in `src/rag/extract/mhtml.js` |
-| N4 | `guard.js:207-222`, `server/index.js:175` | Occurrences keyed by `page_id`; review queue `JOIN page`. RAG docs without a page would have invisible, never-deleted occurrences (`DELETE … WHERE page_id = NULL` matches nothing) | planned: migration v2 adds `doc_id` |
+| N4 | `guard.js:207-222`, `server/index.js:175` | Occurrences keyed by `page_id`; review queue `JOIN page`. RAG docs without a page would have invisible, never-deleted occurrences (`DELETE … WHERE page_id = NULL` matches nothing) | fixed (Phase 3): migration v2 `doc_id`; review queue LEFT JOIN |
 | N5 | design | store-and-mask: the optional `source-capture` page holds **real** text in SQLite, while Mongo/Qdrant hold pseudonyms only | document in README (Phase 7) |
 | N6 | live data | **0 protected entities** in the live registry — only pattern rules mask today | user action before first real ingest |
 
@@ -52,3 +52,10 @@ Status column: **fixed** = fixed in Phase 0, **planned** = scheduled in a later 
 ## 5. Scope change
 
 PPTX added to the ingest formats (user decision, 2026-10-04).
+
+## 6. Corrections found during the build
+
+| # | Brief said | Measured | Effect |
+|---|---|---|---|
+| C7 | ≈ 4 chars/token | bge-m3 on this content: EN prose 3.39, tables 2.56, code 3.0, DE/RO ~4.5 | chunker uses 3.0 / 2.3 per type; real/estimate p50 0.79, max 1.06; no chunk > 512 real tokens |
+| C8 | Wi-Fi-off `doctor` run | not possible on this setup | `infra/offline-guard.mjs` blocks non-loopback sockets/DNS in-process; `doctor` and extractor tests pass under it with 0 attempts |

@@ -186,9 +186,10 @@ export async function buildServer() {
   });
 
   app.get('/api/review', async () => db().prepare(
-    `SELECT o.id, o.surface, o.layer, o.confidence, o.status, o.page_id, p.title AS page_title
-       FROM entity_occurrence o JOIN page p ON p.id = o.page_id
-      WHERE o.status = 'candidate'
+    `SELECT o.id, o.surface, o.layer, o.confidence, o.status, o.page_id, o.doc_id,
+            COALESCE(p.title, 'document ' || o.doc_id) AS page_title
+       FROM entity_occurrence o LEFT JOIN page p ON p.id = o.page_id
+      WHERE o.status = 'candidate' AND (o.page_id IS NOT NULL OR o.doc_id IS NOT NULL)
       ORDER BY o.confidence DESC, o.surface LIMIT 300`
   ).all());
 

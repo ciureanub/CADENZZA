@@ -203,23 +203,33 @@ export function scanText(text) {
   return found.sort((a, b) => a.start - b.start);
 }
 
-/** Persist what was found on a page so the review queue has something to show. */
-export function recordOccurrences(pageId, text) {
+/**
+ * Persist what was found so the review queue has something to show. Keyed by page, or by
+ * RAG document id ({ docId }) for ingested files that have no page; replaces earlier rows.
+ */
+export function recordOccurrences(pageId, text, { docId = null } = {}) {
   const d = db();
-  d.prepare('DELETE FROM entity_occurrence WHERE page_id = ?').run(pageId);
+  d.transaction(() => {
+    if (docId) d.prepare('DELETE FROM entity_occurrence WHERE doc_id = ?').run(docId);
+    else d.prepare('DELETE FROM entity_occurrence WHERE page_id = ? AND doc_id IS NULL').run(pageId);
+  })();
   const ins = d.prepare(
-    `INSERT INTO entity_occurrence (entity_id, page_id, surface, layer, confidence, status)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO entity_occurrence (entity_id, page_id, doc_id, surface, layer, confidence, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
   const hits = scanText(text);
-  const tx = d.transaction(() => {
+  d.transaction(() => {
     for (const h of hits) {
-      ins.run(h.entityId ?? null, pageId, h.surface, h.layer, h.confidence,
+      ins.run(h.entityId ?? null, pageId ?? null, docId, h.surface, h.layer, h.confidence,
               h.status || (h.layer === 'gazetteer' ? 'confirmed' : 'candidate'));
     }
-  });
-  tx();
+  })();
   return hits;
+}
+
+/** Forget a RAG document's review-queue rows (on delete). */
+export function clearDocOccurrences(docId) {
+  db().prepare('DELETE FROM entity_occurrence WHERE doc_id = ?').run(docId);
 }
 
 /**

@@ -23,7 +23,9 @@ export const RULES = [
     name: 'jira-key',
     type: 'project',
     autoMask: false,
-    re: /\b[A-Z][A-Z0-9]{1,9}-\d{1,6}\b/g
+    re: /\b[A-Z][A-Z0-9]{1,9}-\d{1,6}\b/g,
+    // Standards, encodings and algorithms look like issue keys but are not: UTF-8, SHA-256, ISO-27001
+    guard: (s) => !/^(?:UTF|UCS|SHA|MD|AES|RSA|DES|TLS|SSL|HTTP|ISO|IEC|EN|DIN|RFC|CVE|CWE|NIST|PCI|SOC|GDPR|ITIL|IPV|COVID|WCAG|ECMA|ES|ANSI|BS|IEEE|X|Y2K)-/.test(s)
   },
   {
     name: 'legal-entity',

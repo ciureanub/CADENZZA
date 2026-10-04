@@ -109,7 +109,7 @@ test('N1b: 15- and 18-char Salesforce IDs are masked, incl. digits in the checks
   );
 });
 
-test('N2: encoding/standard tokens are not raised as Jira keys', { todo: 'N2 (Phase 3)' }, () => {
+test('N2: encoding/standard tokens are not raised as Jira keys', () => {
   const rules = guard.scanText('Use UTF-8 and SHA-256 per ISO-27001').map((h) => h.rule);
   assert.ok(!rules.includes('jira-key'), JSON.stringify(rules));
 });

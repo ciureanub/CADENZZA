@@ -146,9 +146,17 @@ CREATE TABLE IF NOT EXISTS audit_event (
 CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_event(ts DESC);
       `);
     }
+  },
+  {
+    version: 2,
+    description: 'entity_occurrence.doc_id: review-queue entries for RAG documents without a page',
+    up(d) {
+      d.exec(`
+ALTER TABLE entity_occurrence ADD COLUMN doc_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_occ_doc ON entity_occurrence(doc_id);
+      `);
+    }
   }
-  // Future migrations go here, e.g.:
-  // { version: 2, description: '...', up(d) { d.exec(`ALTER TABLE ...`); } }
 ];
 
 function runMigrations(d) {
