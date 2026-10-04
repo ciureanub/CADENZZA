@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CADENZZA</title>
+<style>
+/* System fonts only — no CDN, no outbound request. */
+:root{
+  --navy:#0d1520; --navy2:#121d2b; --navy3:#18263a; --line:#22354d;
+  --gold:#c9a227; --teal:#2fb6a5; --text:#dde5ef; --dim:#8298b3; --red:#d9534f;
+  --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --sans:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--navy);color:var(--text);font:14px/1.55 var(--sans);height:100vh;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+#app{display:grid;grid-template-columns:238px 1fr;height:100vh}
+
+/* sidebar */
+aside{background:var(--navy2);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.brand{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+.brand h1{margin:0;font:600 21px/1 var(--serif);letter-spacing:.16em;color:var(--gold)}
+.brand small{color:var(--dim);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+.spaces{padding:8px 0;border-bottom:1px solid var(--line)}
+.sp{display:flex;gap:9px;align-items:center;padding:7px 16px;cursor:pointer;border-left:2px solid transparent}
+.sp:hover{background:var(--navy3)}
+.sp.on{background:var(--navy3);border-left-color:var(--gold)}
+.sp b{font:600 10px/1 var(--mono);color:var(--gold);width:20px}
+.tree{flex:1;overflow:auto;padding:8px 0}
+.tg{padding:9px 16px 4px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--dim)}
+.pg{padding:5px 16px 5px 22px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:6px}
+.pg:hover{background:var(--navy3)}
+.pg.on{background:var(--navy3);color:var(--gold)}
+.pg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip{font:9px/1.6 var(--mono);padding:0 4px;border-radius:2px;background:#2a3d57;color:var(--dim);flex-shrink:0}
+.chip.cc{background:#4a2f1a;color:#e0a95f}.chip.re{background:#4a1f1f;color:#e88}
+.sidefoot{border-top:1px solid var(--line);padding:8px 12px;display:flex;gap:6px;flex-wrap:wrap}
+
+/* main */
+main{display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;gap:8px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--navy2)}
+#q{flex:1;background:var(--navy);border:1px solid var(--line);border-radius:4px;padding:7px 10px;outline:none}
+#q:focus{border-color:var(--gold)}
+select,.btn{background:var(--navy3);border:1px solid var(--line);border-radius:4px;padding:6px 11px;cursor:pointer}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn.p{background:var(--gold);color:#0d1520;border-color:var(--gold);font-weight:600}
+.btn.p:hover{color:#0d1520;opacity:.9}
+.mode{font:10px/1 var(--mono);padding:5px 8px;border-radius:3px;background:#1c3b36;color:var(--teal);border:1px solid #24564e}
+#body{flex:1;overflow:auto;padding:0 14px 14px}
+.wrap{max-width:900px;margin:0 auto}
+h2.sec{font:600 18px/1 var(--serif);margin:18px 0 8px;color:var(--gold);letter-spacing:.08em}
+p.lede{color:var(--dim);font-size:13px;margin:0 0 14px}
+.res{cursor:pointer;border:1px solid var(--line);padding:14px;margin:9px 0;border-radius:4px}
+.res:hover{background:var(--navy3);border-color:var(--gold)}
+.res h4{margin:0 0 6px;font:600 15px/1 var(--serif);color:var(--text);letter-spacing:.04em}
+.res p{margin:0 0 9px;color:var(--dim);font-size:13px;line-height:1.5}
+.res .m{font-size:11px;color:var(--dim);gap:6px;display:flex;flex-wrap:wrap}
+.empty{text-align:center;color:var(--dim);padding:40px 20px;font-size:13px}
+.pg, button { transition:all 100ms }
+#ed{border:1px solid var(--line);background:var(--navy3);padding:14px;border-radius:4px;min-height:300px;outline:none;color:var(--text);line-height:1.6;margin:12px 0}
+#ed:focus{border-color:var(--gold);outline:none}
+#ed mark{background:#4a3f1a;color:#e0a95f;padding:2px 4px}
+#src{border:1px solid var(--line);width:100%;padding:10px;background:var(--navy3);color:var(--mono);font-family:var(--mono);font-size:12px;line-height:1.4;border-radius:4px;outline:none;resize:vertical;min-height:200px}
+#src:focus{border-color:var(--gold)}
+table.data{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+table.data th{text-align:left;padding:9px 7px;border-bottom:1px solid var(--gold);color:var(--gold);font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase}
+table.data td{padding:9px 7px;border-bottom:1px solid var(--line)}
+table.data tr:hover{background:var(--navy3)}
+table.data .mono{font-family:var(--mono);font-size:12px}
+table.data .dim{color:var(--dim)}
+table.data .gold{color:var(--gold)}
+table.data .teal{color:var(--teal)}
+table.data .empty{border:none;padding:40px;text-align:center;color:var(--dim)}
+.row{display:flex;gap:9px;margin:12px 0}
+.row input, .row select, .row button{ flex:1 }
+input, select, button { border-radius:4px; padding:8px 11px; border:1px solid var(--line); background:var(--navy3); color:var(--text); cursor:pointer; }
+input:focus, select:focus, button:focus { border-color:var(--gold); outline:none; }
+input:placeholder-shown { color:var(--dim); }
+.toolbar{display:flex;gap:6px;margin:9px 0;flex-wrap:wrap}
+.toolbar button{padding:6px 10px;font-size:12px}
+.sep{width:1px;height:20px;background:var(--line)}
+#ed strong { color:var(--gold); font-weight:700; }
+#ed em { color:var(--teal); font-style:italic; }
+mark{background:#4a3f1a;color:#e0a95f;padding:1px 3px}
+.pg span::before{content:attr(data-icon);margin-right:4px}
+a{color:var(--gold);text-decoration:none}
+a:hover{text-decoration:underline}
+.gold{color:var(--gold)}
+.teal{color:var(--teal)}
+.dim{color:var(--dim)}
+#toast{position:fixed;bottom:20px;left:20px;background:var(--navy2);border:1px solid var(--gold);border-radius:4px;padding:12px 14px;color:var(--text);font-size:13px;z-index:1000;opacity:0;transition:opacity 300ms;pointer-events:none}
+#toast.show{opacity:1;pointer-events:auto}
+@media(max-width:600px){#app{grid-template-columns:1fr}aside{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside>
+    <div class="brand"><h1>CADENZZA</h1><small>0.1</small></div>
+    <div class="spaces" id="spaces"></div>
+    <div class="tree" id="tree"></div>
+    <div class="sidefoot">
+      <button class="btn" onclick="view('guard')" title="Protect names, clients, projects, hosts — mask them everywhere">Guard</button>
+      <button class="btn" onclick="view('review')" id="revn" title="Triage pattern candidates before masking">Review</button>
+      <button class="btn" onclick="view('audit')" title="Append-only log of exports and vault access">Audit</button>
+    </div>
+  </aside>
+  <main>
+    <header>
+      <input id="q" placeholder="Search   —   space:release  tag:cutover  sensitivity:Restricted  &quot;exact phrase&quot;">
+      <select id="mode"><option value="hybrid">Hybrid</option><option value="strict">Strict</option><option value="fuzzy">Fuzzy</option></select>
+      <span class="mode" id="chatmode">PRIVATE</span>
+      <button class="btn p" onclick="newPage()">+ Page</button>
+    </header>
+    <div id="body"><div class="wrap" id="wrap"></div></div>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const api = async (u, o) => {
+  const resp = await fetch('/api' + u, o ? {
+    method: o.method || 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: o.body ? JSON.stringify(o.body) : undefined
+  } : undefined);
+  if (!resp.ok) throw new Error((await resp.json()).error || resp.statusText);
+  return resp.json();
+};
+const esc = (s) => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); };
+
+let META = null, SPACE = 'release', PAGE = null, DIRTY = false, SRC = false;
+
+async function boot() {
+  META = await api('/meta');
+  $('#spaces').innerHTML = META.spaces.map(s =>
+    `<div class="sp" data-k="${s.key}" onclick="pick('${s.key}')"><b>${s.glyph}</b>${esc(s.name.replace(' Management',''))}</div>`).join('');
+  $('#chatmode').textContent = (META.settings.chat_mode || 'private').toUpperCase();
+  $('#revn').textContent = META.counts.candidates ? '(' + META.counts.candidates + ')' : '';
+  pick(SPACE);
+}
+
+async function pick(k) {
+  SPACE = k;
+  document.querySelectorAll('.sp').forEach(e => e.classList.toggle('on', e.dataset.k === k));
+  const rows = await api('/space/' + k + '/tree');
+  const grp = { deliverable: [], note: [], template: [] };
+  rows.forEach(r => (grp[r.type] || grp.note).push(r));
+  const sec = (label, list) => list.length ? `<div class="tg">${label}</div>` + list.map(p =>
+    `<div class="pg${PAGE && PAGE.id === p.id ? ' on' : ''}" onclick="openPage(${p.id})"><span>${esc(p.title)}</span>${
+      p.sensitivity === 'Client-Confidential' ? '<i class="chip cc">CC</i>' :
+      p.sensitivity === 'Restricted' ? '<i class="chip re">R</i>' : ''}</div>`).join('') : '';
+  $('#tree').innerHTML = sec('Deliverables', grp.deliverable) + sec('Notes', grp.note) + sec('Templates', grp.template)
+}
+
+async function home() { $('#wrap').innerHTML = '<div class="empty">Search or pick a page.</div>'; }
+
+async function openPage(id) {
+  PAGE = await api('/page/' + id);
+  const html = PAGE.body_html, srcView = `<h3>HTML source</h3><textarea id="src">${esc(html)}</textarea>`;
+  pick(SPACE);
+  $('#wrap').innerHTML = `<h2 class="sec">${esc(PAGE.title)}</h2>
+  <div class="row">
+    <input id="title" value="${esc(PAGE.title)}">
+    <select id="space"><option value="stakeholder"${SPACE==='stakeholder'?' selected':''}>Stakeholder</option><option value="environment"${SPACE==='environment'?' selected':''}>Environment</option><option value="release"${SPACE==='release'?' selected':''}>Release</option></select>
+    <select id="sensitivity"><option value="Public"${PAGE.sensitivity==='Public'?' selected':''}>Public</option><option value="Restricted"${PAGE.sensitivity==='Restricted'?' selected':''}>Restricted</option><option value="Client-Confidential"${PAGE.sensitivity==='Client-Confidential'?' selected':''}>Client-Confidential</option></select>
+    <button class="btn" onclick="save()">Save</button>
+    <button class="btn" onclick="exportPage()">Export</button>
+  </div>
+  <div class="toolbar">
+    <button onclick="cmd('bold')"><b>Bold</b></button><button onclick="cmd('italic')"><i>Italic</i></button><button onclick="cmd('underline')" style="text-decoration:underline">Underline</button>
+    <button onclick="cmd('createLink',prompt('URL'))">Link</button>
+    <button onclick="toggleSrc()" id="srcbtn">HTML</button>
+    <button onclick="cmd('formatBlock','h2')">H2</button><button onclick="cmd('formatBlock','h3')">H3</button>
+    <button onclick="cmd('formatBlock','p')">P</button><button onclick="cmd('formatBlock','blockquote')">Quote</button><button onclick="cmd('formatBlock','pre')">Code</button>
+    <div class="sep"></div>
+    <button onclick="table()">Table</button><button onclick="linkTo()">[[Link]]</button>
+    <button onclick="cmd('removeFormat')">Clear</button>
+  </div>
+  <div id="ed" contenteditable="true">${PAGE.body_html || '<p></p>'}</div>
+  <textarea id="src" spellcheck="false"></textarea>
+  ${PAGE.backlinks.length?`<p class="lede" style="margin-top:14px">Linked from: ${PAGE.backlinks.map(b=>`<a href="#" onclick="openPage(${b.id});return false" class="gold">${esc(b.title)}</a>`).join(' · ')}</p>`:''}`;
+  $('#ed').oninput = $('#title').oninput = () => DIRTY = true;
+  pick(SPACE);
+}
+
+const cmd = (c, v) => { document.execCommand(c, false, v); $('#ed').focus(); DIRTY = true; };
+function table() {
+  const r = +prompt('Rows', '3'), c = +prompt('Columns', '3');
+  if (!r || !c) return;
+  cmd('insertHTML', '<table><tbody>' + Array.from({length:r},()=>'<tr>'+'<td>&nbsp;</td>'.repeat(c)+'</tr>').join('') + '</tbody></table><p></p>');
+}
+function linkTo() { const t = prompt('Page title to link to'); if (t) cmd('insertHTML', '[[' + t + ']]'); }
+function toggleSrc() {
+  SRC = !SRC;
+  const src = $('#src'), ed = $('#ed');
+  if (SRC) { ed.style.display = 'none'; src.style.display = 'block'; src.value = ed.innerHTML; $('#srcbtn').style.borderColor = 'var(--gold)'; }
+  else { src.style.display = 'none'; ed.style.display = 'block'; ed.innerHTML = src.value; $('#srcbtn').style.borderColor = 'var(--line)'; }
+}
+
+async function save() {
+  const space = $('#space').value, title = $('#title').value, sensitivity = $('#sensitivity').value, body_html = SRC ? $('#src').value : $('#ed').innerHTML;
+  if (!title.trim()) return toast('Title required');
+  try {
+    await api('/page/' + PAGE.id, { method: 'PATCH', body: { title, space, sensitivity, body_html } });
+    PAGE.title = title;
+    DIRTY = false;
+    toast('Saved');
+    pick(SPACE);
+  } catch (e) {
+    toast('Save error: ' + (e.message || e));
+  }
+}
+
+async function exportPage() {
+  const r = await fetch('/api/page/' + PAGE.id + '/export');
+  if (!r.ok) return toast((await r.json()).error || 'Export blocked');
+  const b = await r.blob(), a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = PAGE.title.replace(/[^\w.-]+/g,'_') + '.html'; a.click();
+  toast('Exported — masked and egress-checked');
+}
+async function newPage() {
+  const t = prompt('Title'); if (!t) return;
+  const p = await api('/page', { body: { space_key: SPACE, title: t, body_html: '<p></p>', type: 'note' } });
+  PAGE = null; await openPage(p.id);
+}
+
+/* search */
+let timer;
+const qElem = $('#q'), mElem = $('#mode');
+if (qElem && mElem) {
+  qElem.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 220); };
+  mElem.onchange = run;
+}
+async function run() {
+  try {
+    const q = $('#q').value.trim();
+    if (!q) { PAGE = null; return home(); }
+    const rows = await api('/search?q=' + encodeURIComponent(q) + '&mode=' + $('#mode').value);
+    $('#wrap').innerHTML = `<h2 class="sec">${rows.length} result${rows.length===1?'':'s'}</h2>
+      <p class="lede">${esc($('#mode').value)} mode</p>` + (rows.map(r => `
+      <div class="res" onclick="openPage(${r.id})"><h4>${esc(r.title)}</h4>
+        <p>${r.snippet ? r.snippet.replace(/</g,'&lt;').replace(/&lt;mark&gt;/g,'<mark>').replace(/&lt;\\/mark&gt;/g,'</mark>') : ''}</p>
+        <div class="m">${r.space} · ${r.type} · ${r.sensitivity} · ${r.mode}${r.modes?' ['+r.modes.join('+')+']':''}</div>
+      </div>`).join('') || '<div class="empty">Nothing found. Try Fuzzy.</div>');
+  } catch (e) {
+    console.error('Search error:', e);
+    $('#wrap').innerHTML = '<div class="empty">Search error. Check console.</div>';
+  }
+}
+
+/* panels */
+async function view(what) {
+  PAGE = null;
+  if (what === 'guard') {
+    const rows = await api('/entities');
+    $('#wrap').innerHTML = `<h2 class="sec">Entity Guard</h2>
+    <p class="lede">Deterministic, reversible pseudonymisation. One entity, one pseudonym, everywhere. The real names live encrypted in the vault and are never indexed, never exported.</p>
+    <div class="row">
+      <input id="ec" placeholder="Canonical name  (e.g. Northwind Energy SE)">
+      <input id="ea" placeholder="Aliases, comma separated">
+      <select id="et"><option value="org">org</option><option value="person">person</option><option value="project">project</option><option value="host">host</option><option value="other">other</option></select>
+      <button class="btn p" onclick="addEnt()">Protect</button>
+    </div>
+    <table class="data"><tr><th>Pseudonym</th><th>Type</th><th>Canonical</th><th>Aliases</th><th></th></tr>
+    ${rows.map(e => `<tr><td class="mono gold">${esc(e.pseudonym)}</td><td class="dim">${e.type}</td>
+      <td>${esc(e.canonical)}</td><td class="dim">${esc(e.aliases.join(', '))}</td>
+      <td style="white-space:nowrap">
+  <button class="btn" onclick="retireEnt(${e.id})" title="Retire: stops matching new text, vault preserved">retire</button>
+  <button class="btn" style="color:var(--red);border-color:var(--red);margin-left:4px" onclick="purgeEnt(${e.id})" title="Purge: permanently destroys vault entry — pseudonyms become unresolvable">purge</button>
+</td></tr>`).join('')
+      || '<tr><td colspan="5" class="empty">No protected entities yet. Add your employers and clients first.</td></tr>'}</table>
+    <p class="lede" style="margin-top:16px">Matching covers punctuation and spacing variants automatically — one entry catches the dotted, undotted, hyphenated, spaced and legal-suffix forms. Context-only references ("the German utility") are not detectable; that is what the review queue is for. <strong>Retire</strong> stops an entity from matching new text while keeping its vault entry intact so historical pseudonyms remain resolvable. <strong>Purge</strong> destroys the vault entry permanently — use only for right-to-erasure compliance.</p>`;
+  } else if (what === 'review') {
+    const rows = await api('/review');
+    $('#wrap').innerHTML = `<h2 class="sec">Review queue</h2>
+    <p class="lede">Pattern and heuristic candidates. Nothing here is masked until you confirm it.</p>
+    <table class="data"><tr><th>Surface</th><th>Layer</th><th>Conf.</th><th>Page</th><th></th></tr>
+    ${rows.map(r => `<tr><td class="mono">${esc(r.surface)}</td><td class="dim">${r.layer}</td>
+      <td class="dim">${r.confidence.toFixed(2)}</td><td class="dim">${esc(r.page_title)}</td>
+      <td><button class="btn" onclick="triage(${r.id},'protect')">protect</button>
+          <button class="btn" onclick="triage(${r.id},'ignore')">ignore</button></td></tr>`).join('')
+      || '<tr><td colspan="5" class="empty">Nothing to triage.</td></tr>'}</table>`;
+  } else {
+    const rows = await api('/audit');
+    $('#wrap').innerHTML = `<h2 class="sec">Audit log</h2>
+    <p class="lede">Append-only. Every export, vault access and entity change.</p>
+    <table class="data"><tr><th>When</th><th>Action</th><th>Detail</th></tr>
+    ${rows.map(r=>`<tr><td class="mono dim">${esc(r.ts)}</td><td class="mono teal">${esc(r.action)}</td><td class="dim">${esc(r.detail||'')}</td></tr>`).join('')}</table>`;
+  }
+}
+async function addEnt() {
+  const canonical = $('#ec').value.trim(); if (!canonical) return;
+  await api('/entities', { body: { canonical, aliases: $('#ea').value, type: $('#et').value } });
+  toast('Protected'); view('guard');
+}
+async function retireEnt(id) {
+  await api('/entities/' + id, { method: 'DELETE' });
+  toast('Retired — vault preserved, pseudonym still resolvable');
+  view('guard');
+}
+async function purgeEnt(id) {
+  if (!confirm('PERMANENT: destroy vault entry for this entity?\n\nAny pseudonym already in pages will become unresolvable. This cannot be undone.')) return;
+  await api('/entities/' + id + '?purge=1', { method: 'DELETE' });
+  toast('Purged — vault entry destroyed');
+  view('guard');
+}
+async function triage(id, action) {
+  await api('/review/' + id, { body: { action } });
+  META = await api('/meta'); $('#revn').textContent = META.counts.candidates ? '('+META.counts.candidates+')' : '';
+  view('review');
+}
+
+addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); $('#q').focus(); $('#q').select(); }
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); if (PAGE) save(); }
+});
+addEventListener('beforeunload', e => { if (DIRTY) { e.preventDefault(); e.returnValue = ''; } });
+boot();
+</script>
+</body>
+</html>

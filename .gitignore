@@ -1,0 +1,32 @@
+# --- live data (CADENZZA_HOME = this folder) — never commit ---
+*.db
+*.db-*
+*.sqlite*
+vault.key
+*.key
+rag/
+backup/
+import/
+exports/
+assets/
+files/
+
+# --- training / ingested documents: code only in this repo ---
+# Synthetic fixtures under test/fixtures/ are the only exception.
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.mht
+*.mhtml
+!**/test/fixtures/**
+
+# --- build / tooling ---
+node_modules/
+*.tgz
+*.log
+
+# --- local, non-code ---
+.claude/
+METAPROMPT-*.md
