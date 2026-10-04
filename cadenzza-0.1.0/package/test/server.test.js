@@ -97,3 +97,10 @@ test('stray web fragments are gone', async () => {
   }
   assert.equal((await app.inject({ url: '/' })).statusCode, 200);
 });
+
+test('static files cannot escape web/ (encoded traversal)', async () => {
+  for (const url of ['/../package.json', '/..%2fpackage.json', '/%2e%2e/package.json', '/..%5cpackage.json', '/%2e%2e%5c%2e%2e%5cpackage.json']) {
+    const r = await app.inject({ url });
+    assert.doesNotMatch(r.body, /"name":\s*"cadenzza"/, url);
+  }
+});
