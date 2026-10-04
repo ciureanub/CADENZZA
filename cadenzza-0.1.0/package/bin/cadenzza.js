@@ -10,6 +10,7 @@ import { search } from '../src/search/index.js';
 import { seedTemplates } from '../src/seed/templates.js';
 import { buildServer } from '../src/server/index.js';
 import { paths } from '../src/config.js';
+import { ragChecks } from '../src/rag/health.js';
 
 const program = new Command();
 program.name('cadenzza')
@@ -131,9 +132,14 @@ program.command('search <query>')
 
 program.command('doctor')
   .description('Environment and integrity check')
-  .action(() => {
+  .option('--no-rag', 'skip the local RAG service checks (Mongo, Qdrant, Ollama)')
+  .action(async (opts) => {
     const d = db();
-    const ok = (l, v) => console.log(`  ${v ? 'ok  ' : 'FAIL'}  ${l}`);
+    let failed = 0;
+    const ok = (l, v, detail = '', warn = false) => {
+      if (!v) failed++;
+      console.log(`  ${!v ? 'FAIL' : warn ? 'warn' : 'ok  '}  ${l}${detail ? `  (${detail})` : ''}`);
+    };
     console.log('CADENZZA doctor\n');
     ok(`node ${process.version} (>=20)`, Number(process.versions.node.split('.')[0]) >= 20);
     ok(`data dir ${paths.home}`, fs.existsSync(paths.home));
@@ -146,6 +152,14 @@ program.command('doctor')
     console.log(`  candidates  ${d.prepare("SELECT COUNT(*) c FROM entity_occurrence WHERE status='candidate'").get().c}`);
     console.log(`  storage     ${getSetting('storage_mode')}`);
     console.log(`  offline     ${getSetting('offline')}`);
+
+    if (opts.rag) {
+      const models = [getSetting('rag_embed_model', 'bge-m3'), getSetting('rag_gen_model', 'gemma4:latest')];
+      console.log('\nLocal RAG services\n');
+      for (const c of await ragChecks({ models })) ok(c.label, c.ok, c.detail, c.warn);
+    }
+    console.log(failed ? `\n${failed} check(s) failed` : '\nAll checks passed.');
+    process.exitCode = failed ? 1 : 0;
   });
 
 program.parse();

@@ -28,7 +28,17 @@ export const paths = {
     const d = path.join(home(), 'import');
     fs.mkdirSync(d, { recursive: true });
     return d;
-  }
+  },
+  /** Mongo + Qdrant data, logs, eval output. Same back-up / never-commit rule as the db. */
+  get rag() { return path.join(home(), 'rag'); }
+};
+
+/** Local RAG service endpoints. Loopback only; `cadenzza doctor` enforces it. */
+export const RAG = {
+  get mongoUri()  { return process.env.CADENZZA_MONGO_URI  || 'mongodb://127.0.0.1:27017/?replicaSet=cadenzza&directConnection=true'; },
+  get qdrantUrl() { return process.env.CADENZZA_QDRANT_URL || 'http://127.0.0.1:6333'; },
+  get ollamaUrl() { return process.env.CADENZZA_OLLAMA_URL || 'http://127.0.0.1:11434'; },
+  mongoDb: 'cadenzza_rag'
 };
 
 export const SENSITIVITY = ['Public', 'Internal', 'Client-Confidential', 'Restricted'];
