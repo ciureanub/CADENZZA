@@ -4,12 +4,12 @@
 *.sqlite*
 vault.key
 *.key
-rag/
-backup/
-import/
-exports/
-assets/
-files/
+/rag/
+/backup/
+/import/
+/exports/
+/assets/
+/files/
 
 # --- training / ingested documents: code only in this repo ---
 # Synthetic fixtures under test/fixtures/ are the only exception.
