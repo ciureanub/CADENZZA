@@ -12,9 +12,9 @@ Status column: **fixed** = fixed in Phase 0, **planned** = scheduled in a later 
 | `CADENZZA_HOME` else `~/.cadenzza`; `chat_mode: 'private'`, `offline: '1'` | `src/config.js:6-9`, `:38-43` | ok |
 | Versioned migrations, v1 only | `src/db/index.js:23-155` | ok |
 | Importer formats: mhtml/mht, html/htm, md (regex), txt, .doc only if MHTML | `src/server/importer.js:165-219` | ok |
-| `/api/upload` allow-list omits docx/doc/html | `src/server/index.js:270` | planned (Phase 2) |
+| `/api/upload` allow-list omits docx/doc/html | `src/server/index.js:270` | fixed (Phase 2): + doc/docx/pptx/html/mhtml |
 | `/api/import` comment claims `.docx` | `src/server/index.js:218` | fixed |
-| `mdToHtml` wraps each `<li>` in its own `<ul>` | `src/server/importer.js:145-146` | planned (Phase 2, `marked`) — pinned by a `todo` test |
+| `mdToHtml` wraps each `<li>` in its own `<ul>` | `src/server/importer.js:145-146` | fixed (Phase 2): `marked` |
 | `POST /api/settings` persists unknown keys | `src/server/index.js:75-78` | ok; RAG keys go into `VALID_SETTINGS` (Phase 4/6) |
 | UI: single file, system fonts, no external URLs, `PRIVATE` badge | `web/index.html:114`, `:142`; 28 inline `onclick` | ok |
 | Ollama 0.30.8, `gemma4:latest`, bound to `127.0.0.1:11434` | `ollama list`, `netstat` | ok |
@@ -38,7 +38,7 @@ Status column: **fixed** = fixed in Phase 0, **planned** = scheduled in a later 
 | N1 | `src/entity/patterns.js:17-19` | `salesforce-id` auto-masked ordinary words ("accomplishments", "administrations" → `[REF_SALESFORCE_ID]`). Would corrupt training text before embedding | fixed: require ≥ 2 digits |
 | N1b | same | 18-char IDs with digits in the checksum (`…YA0`) were **not masked** — suffix allowed letters only; real suffix alphabet is `A-Z0-5`. A leak | fixed |
 | N2 | `patterns.js:25` | `jira-key` raises `UTF-8`, `SHA-256`, `ISO-27001` as candidates → review-queue flood at RAG volume | planned (Phase 3) — `todo` test |
-| N3 | `importer.js:62-66`, `:167` | QP decode is byte-wise: `M=C3=BCnchen` → `MÃ¼nchen`. cp1252 decode runs on a string already decoded as UTF-8, so it never works. Hits DE/RO content | planned (Phase 2 extractor move) — `todo` test |
+| N3 | `importer.js:62-66`, `:167` | QP decode is byte-wise: `M=C3=BCnchen` → `MÃ¼nchen`. cp1252 decode runs on a string already decoded as UTF-8, so it never works. Hits DE/RO content | fixed (Phase 2): byte-level QP + charset decode in `src/rag/extract/mhtml.js` |
 | N4 | `guard.js:207-222`, `server/index.js:175` | Occurrences keyed by `page_id`; review queue `JOIN page`. RAG docs without a page would have invisible, never-deleted occurrences (`DELETE … WHERE page_id = NULL` matches nothing) | planned: migration v2 adds `doc_id` |
 | N5 | design | store-and-mask: the optional `source-capture` page holds **real** text in SQLite, while Mongo/Qdrant hold pseudonyms only | document in README (Phase 7) |
 | N6 | live data | **0 protected entities** in the live registry — only pattern rules mask today | user action before first real ingest |

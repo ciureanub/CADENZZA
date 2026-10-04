@@ -1,6 +1,7 @@
 import './_env.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { importDocument } from '../src/server/importer.js';
 import * as pages from '../src/pages.js';
 
@@ -60,23 +61,36 @@ test('.doc that is really MHTML (Confluence export) is accepted', async () => {
   assert.equal(p.title, 'From Confluence');
 });
 
-test('binary OLE .doc is rejected with a clear message', async () => {
+test('corrupt binary OLE .doc is rejected with a clear message', async () => {
   const ole = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0, 0, 0]);
-  await assert.rejects(importDocument({ filename: 'old.doc', buffer: ole }), /OLE Compound/);
+  await assert.rejects(importDocument({ filename: 'old.doc', buffer: ole }), /Could not read legacy \.doc \(OLE Compound\)/);
 });
 
 test('unsupported extensions are rejected', async () => {
-  await assert.rejects(importDocument({ filename: 'deck.pptx', buffer: Buffer.from('PK') }), /Unsupported file type: \.pptx/);
+  await assert.rejects(importDocument({ filename: 'tool.exe', buffer: Buffer.from('MZ') }), /Unsupported file type: \.exe/);
 });
 
-/* ---------------- known defects, fixed in Phase 2 ---------------- */
+test('every new format imports as a page (pdf, docx, doc, pptx)', async () => {
+  for (const f of ['runbook.pdf', 'runbook.docx', 'runbook.doc', 'deck.pptx']) {
+    const p = await imp(f, fs.readFileSync(new URL(`./fixtures/${f}`, import.meta.url)));
+    assert.ok(p.title && p.body_text.length > 50, f);
+    assert.match(p.body_text, /Contoso/, f);
+  }
+});
 
-test('N3: QP-encoded UTF-8 decodes to real characters', { todo: 'N3 (Phase 2)' }, async () => {
+test('image-only PDF imports with needs_ocr flagged', async () => {
+  const r = await importDocument({ filename: 'scanned.pdf', buffer: fs.readFileSync(new URL('./fixtures/scanned.pdf', import.meta.url)) });
+  assert.equal(r.needs_ocr, true);
+});
+
+/* ---------------- formerly known defects, fixed in Phase 2 ---------------- */
+
+test('N3: QP-encoded UTF-8 decodes to real characters', async () => {
   const p = await imp('de.mhtml', mhtml('<html><body><h1>M=C3=BCnchen Cutover</h1></body></html>'));
   assert.equal(p.title, 'München Cutover');
 });
 
-test('md: consecutive list items share one <ul>', { todo: 'Phase 2 (marked)' }, async () => {
+test('md: consecutive list items share one <ul>', async () => {
   const p = await imp('l.md', '- a\n- b\n- c');
   assert.equal((p.body_html.match(/<ul>/g) || []).length, 1);
 });

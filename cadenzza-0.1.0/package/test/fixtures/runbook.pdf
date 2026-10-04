@@ -1,0 +1,73 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Title (Contoso Cutover Runbook) /Producer (cadenzza fixtures) >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 434 >>
+stream
+BT /F1 20 Tf 72 720 Td (Contoso Cutover Runbook) Tj ET
+BT /F1 15 Tf 72 680 Td (Rollback procedure) Tj ET
+BT /F1 11 Tf 72 655 Td (If the cutover fails, Contoso restores the org snap-) Tj ET
+BT /F1 11 Tf 72 641 Td (shot taken at T-0 and informs Northwind Traders.) Tj ET
+BT /F1 11 Tf 72 610 Td (The release manager owns the decision.) Tj ET
+BT /F1 8 Tf 72 40 Td (Contoso internal - cutover runbook) Tj ET
+BT /F1 8 Tf 300 28 Td (1) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 320 >>
+stream
+BT /F1 13 Tf 72 720 Td (Decision points) Tj ET
+BT /F1 11 Tf 72 695 Td (ï Go/No-Go at T-2h) Tj ET
+BT /F1 11 Tf 72 681 Td (ï Rollback deadline T+1h) Tj ET
+BT /F1 11 Tf 72 650 Td (Escalation goes through the Contoso CAB.) Tj ET
+BT /F1 8 Tf 72 40 Td (Contoso internal - cutover runbook) Tj ET
+BT /F1 8 Tf 300 28 Td (2) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 208 >>
+stream
+BT /F1 15 Tf 72 720 Td (Communications) Tj ET
+BT /F1 11 Tf 72 695 Td (Herr M¸ller sends the go-live note.) Tj ET
+BT /F1 8 Tf 72 40 Td (Contoso internal - cutover runbook) Tj ET
+BT /F1 8 Tf 300 28 Td (3) Tj ET
+endstream
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000133 00000 n 
+0000000230 00000 n 
+0000000314 00000 n 
+0000000440 00000 n 
+0000000925 00000 n 
+0000001051 00000 n 
+0000001422 00000 n 
+0000001549 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R /Info 4 0 R >>
+startxref
+1809
+%%EOF

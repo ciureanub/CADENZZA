@@ -228,7 +228,7 @@ export async function buildServer() {
     return doc;
   });
 
-  /* ---------- import (.mhtml / .mht / .doc-as-MHTML / .html / .md / .txt) ---------- */
+  /* ---------- import (.pdf / .docx / .doc / .pptx / .html / .md / .txt / .mhtml) ---------- */
   app.post('/api/import', async (req, reply) => {
     // Multipart upload (any number of files), or JSON { filePath } relative to CADENZZA_HOME/import
     const imported = [], failed = [];
@@ -271,7 +271,7 @@ export async function buildServer() {
 
   /* ---------- assets upload ---------- */
   app.post('/api/upload', async (req, reply) => {
-    const ALLOWED_EXTS = /\.(png|jpe?g|gif|svg|webp|pdf|txt|md|csv|json|xml)$/i;
+    const ALLOWED_EXTS = /\.(png|jpe?g|gif|svg|webp|pdf|txt|md|csv|json|xml|docx?|pptx|html?|mhtml?)$/i;
     const parts = req.files ? req.files() : null;
     const saved = [];
     if (parts) {
