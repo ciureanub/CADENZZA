@@ -22,6 +22,12 @@ export const paths = {
     const d = path.join(home(), 'exports');
     fs.mkdirSync(d, { recursive: true });
     return d;
+  },
+  /** The only directory /api/import may read from by path. */
+  get importRoot() {
+    const d = path.join(home(), 'import');
+    fs.mkdirSync(d, { recursive: true });
+    return d;
   }
 };
 

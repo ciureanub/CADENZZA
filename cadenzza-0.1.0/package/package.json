@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "start": "node bin/cadenzza.js serve",
-    "test": "node --test test/*.test.js"
+    "test": "node --test \"test/**/*.test.js\""
   },
   "keywords": [
     "release-management",

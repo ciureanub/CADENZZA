@@ -14,9 +14,10 @@ export const RULES = [
     name: 'salesforce-id',
     type: 'other',
     autoMask: true,
-    re: /\b[a-zA-Z0-9]{3}[0-9A-Za-z]{12}(?:[A-Za-z]{3})?\b(?=\s|$|[.,;)])/g,
-    // 15/18-char IDs start with a known 3-char key prefix; keep it tight to avoid false hits
-    guard: (s) => /^(00[0-9A-Za-z]|a[0-9A-Za-z]{2}|500|006|003|001|012|005)/.test(s)
+    // 15-char ID, optionally + 3-char checksum drawn from A-Z0-5
+    re: /\b[a-zA-Z0-9]{15}(?:[A-Z0-5]{3})?\b/g,
+    // Known key prefix, and at least two digits so plain words ("accomplishments") never match
+    guard: (s) => /^(00[0-9A-Za-z]|a[0-9A-Za-z]{2}|500|006|003|001|012|005)/.test(s) && /\d.*\d/.test(s)
   },
   {
     name: 'jira-key',

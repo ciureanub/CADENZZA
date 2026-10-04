@@ -34,6 +34,19 @@ function validatePagePatch(patch) {
     throw new Error(`Invalid type: ${patch.type}`);
 }
 
+/**
+ * Resolve a client-supplied path against CADENZZA_HOME/import. Returns null if it
+ * escapes the root (traversal, absolute path elsewhere, symlink/junction out).
+ */
+function resolveImportPath(p) {
+  const root = fs.realpathSync(paths.importRoot);
+  let target = path.resolve(root, p);
+  if (fs.existsSync(target)) target = fs.realpathSync(target);
+  const rel = path.relative(root, target);
+  if (!rel || path.isAbsolute(rel) || rel.split(path.sep)[0] === '..') return null;
+  return target;
+}
+
 /* clamp search query length */
 const MAX_Q = 400;
 
@@ -215,54 +228,45 @@ export async function buildServer() {
     return doc;
   });
 
-  /* ---------- import (.doc / .docx / .html / .md / .txt / .mhtml) ---------- */
+  /* ---------- import (.mhtml / .mht / .doc-as-MHTML / .html / .md / .txt) ---------- */
   app.post('/api/import', async (req, reply) => {
-    // Accepts either multipart file upload OR a JSON body with { path, space_key }
-    let result;
+    // Multipart upload (any number of files), or JSON { filePath } relative to CADENZZA_HOME/import
+    const imported = [], failed = [];
     const contentType = req.headers['content-type'] || '';
 
     if (contentType.includes('multipart/form-data')) {
-      const parts = req.file ? [await req.file()] : [];
-      if (!parts.length) {
-        // try req.files
-        const all = [];
-        if (req.files) for await (const p of req.files()) all.push(p);
-        parts.push(...all);
+      for await (const part of req.files()) {
+        const buffer = await part.toBuffer();
+        try {
+          imported.push(await importDocument({
+            filename: part.filename,
+            buffer,
+            space_key: req.query.space || 'release',
+            sensitivity: req.query.sensitivity || null
+          }));
+        } catch (err) {
+          failed.push({ filename: part.filename, error: err.message });
+        }
       }
-      if (!parts.length) return reply.code(400).send({ error: 'No file received' });
-
-      result = [];
-      for (const part of parts) {
-        const buf = await part.toBuffer();
-        const r = await importDocument({
-          filename: part.filename,
-          buffer: buf,
-          space_key: req.query.space || 'release',
-          sensitivity: req.query.sensitivity || null
-        });
-        result.push(r);
-      }
-    } else {
-      // JSON body: { filePath, space_key, sensitivity }
-      const { filePath, space_key = 'release', sensitivity = null } = req.body || {};
-      if (!filePath) return reply.code(400).send({ error: 'filePath is required' });
-
-      // Resolve absolute path safely — reject path traversal
-      const resolved = path.resolve(filePath);
-      if (!fs.existsSync(resolved))
-        return reply.code(404).send({ error: `File not found: ${resolved}` });
-
-      const buf = fs.readFileSync(resolved);
-      const filename = path.basename(resolved);
-      try {
-        const r = await importDocument({ filename, buffer: buf, space_key, sensitivity });
-        result = [r];
-      } catch (err) {
-        return reply.code(400).send({ error: err.message });
-      }
+      if (!imported.length && !failed.length) return reply.code(400).send({ error: 'No file received' });
+      if (!imported.length) return reply.code(400).send({ error: failed[0].error, imported, failed });
+      return { imported, failed };
     }
 
-    return { imported: result };
+    const { filePath, space_key = 'release', sensitivity = null } = req.body || {};
+    if (!filePath) return reply.code(400).send({ error: 'filePath is required' });
+
+    const resolved = resolveImportPath(String(filePath));
+    if (!resolved) return reply.code(403).send({ error: 'filePath must be inside the import folder' });
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile())
+      return reply.code(404).send({ error: `File not found: ${path.relative(paths.importRoot, resolved)}` });
+
+    try {
+      imported.push(await importDocument({ filename: path.basename(resolved), buffer: fs.readFileSync(resolved), space_key, sensitivity }));
+    } catch (err) {
+      return reply.code(400).send({ error: err.message });
+    }
+    return { imported, failed };
   });
 
   /* ---------- assets upload ---------- */

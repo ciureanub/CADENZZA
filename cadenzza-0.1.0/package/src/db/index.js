@@ -1,10 +1,7 @@
 import Database from 'better-sqlite3';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { paths, SPACES, DEFAULT_SETTINGS } from '../config.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+/* MIGRATIONS below is the single source of truth for the schema. */
 let _db = null;
 
 export function db() {
