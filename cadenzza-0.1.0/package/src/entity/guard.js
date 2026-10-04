@@ -63,7 +63,27 @@ function nextPseudonym(type) {
 /* ------------------------------------------------------------------ */
 
 let _compiled = null;
-export function invalidate() { _compiled = null; }
+/** Registry changed: drop the compiled matcher and bump registry_version so RAG re-masks stale docs. */
+export function invalidate() {
+  _compiled = null;
+  const v = Number(getSetting('registry_version', '0')) + 1;
+  db().prepare("INSERT INTO setting (key, value) VALUES ('registry_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(v));
+}
+
+export const registryVersion = () => Number(getSetting('registry_version', '0'));
+export const registrySize = () => db().prepare('SELECT COUNT(*) c FROM protected_entity WHERE active = 1').get().c;
+
+/**
+ * Attach a RAG document's review-queue rows to its mirror page, dropping the page-only
+ * duplicates that pages.create() recorded, so each surface is listed once.
+ */
+export function linkDocOccurrences(docId, pageId) {
+  const d = db();
+  d.transaction(() => {
+    d.prepare('DELETE FROM entity_occurrence WHERE page_id = ? AND doc_id IS NULL').run(pageId);
+    d.prepare('UPDATE entity_occurrence SET page_id = ? WHERE doc_id = ?').run(pageId, docId);
+  })();
+}
 
 export function addEntity({ canonical, type = 'org', aliases = [], style = null, origin = 'user', sensitivity = 'Client-Confidential' }) {
   canonical = String(canonical).trim();

@@ -11,6 +11,8 @@ import { seedTemplates } from '../src/seed/templates.js';
 import { buildServer } from '../src/server/index.js';
 import { paths } from '../src/config.js';
 import { ragChecks } from '../src/rag/health.js';
+import * as rag from '../src/rag/ingest.js';
+import * as mongoStore from '../src/rag/store/mongo.js';
 
 const program = new Command();
 program.name('cadenzza')
@@ -68,9 +70,13 @@ ent.command('list').action(() => {
 ent.command('add <canonical>')
   .option('-t, --type <type>', 'org|person|project|host|other', 'org')
   .option('-a, --alias <alias...>', 'additional surface forms')
-  .action((canonical, o) => {
+  .action(async (canonical, o) => {
     const e = guard.addEntity({ canonical, type: o.type, aliases: o.alias || [] });
     console.log(`${e.canonical} -> ${e.pseudonym}`);
+    const r = await rag.remaskAfterRegistryChange();
+    if (r.error) console.log(`  RAG not re-masked now (${r.error}); run: cadenzza rag remask`);
+    else if (r.stale) console.log(`  re-masked ${r.stale} ingested document(s)`);
+    await mongoStore.close();
   });
 ent.command('remove <id>').action((id) => { guard.removeEntity(Number(id)); console.log('removed'); });
 
@@ -161,5 +167,102 @@ program.command('doctor')
     console.log(failed ? `\n${failed} check(s) failed` : '\nAll checks passed.');
     process.exitCode = failed ? 1 : 0;
   });
+
+/* ------------------------------------------------------------------ rag */
+
+const ragCmd = program.command('rag').description('Local RAG corpus: ingest, status, maintenance');
+
+/** Run a rag action, always closing the Mongo connection; errors print masked and exit 1. */
+const ragAction = (fn) => async (...args) => {
+  try { await fn(...args); } catch (err) { console.error(`error: ${guard.mask(err.message)}`); process.exitCode = 1; }
+  finally { await mongoStore.close(); }
+};
+
+ragCmd.command('ingest <path>')
+  .description('Ingest a file or folder (pdf, docx, doc, pptx, html, md, txt, mhtml)')
+  .option('-s, --space <key>', 'target space', 'release')
+  .option('--sensitivity <level>', 'Public|Internal|Client-Confidential|Restricted (default: space default)')
+  .option('--model <id>', 'embedding model (default: active)')
+  .option('--force', 're-process even if unchanged')
+  .option('--allow-empty-registry', 'ingest even with no protected entities registered')
+  .action(ragAction(async (target, o) => {
+    const t0 = performance.now();
+    let chunks = 0, embedded = 0, embedMs = 0;
+    const results = await rag.ingestPath(target, {
+      space: o.space, sensitivity: o.sensitivity, model: o.model, force: !!o.force, allowEmptyRegistry: !!o.allowEmptyRegistry
+    }, (r) => {
+      chunks += r.chunks || 0; embedded += r.embedded || 0; embedMs += r.embed_ms || 0;
+      const detail = r.status === 'failed' ? r.error
+        : r.status === 'duplicate' ? `same content as ${r.duplicate_of}`
+        : `${r.chunks ?? 0} chunks${r.embedded != null ? `, ${r.embedded} embedded, ${r.reused} reused` : ''}`;
+      console.log(`  ${r.status.padEnd(10)} ${(r.title || r.filename || '').slice(0, 50).padEnd(50)} ${detail}${r.ms ? `  ${(r.ms / 1000).toFixed(1)}s` : ''}`);
+    });
+    const failed = results.filter((r) => r.status === 'failed').length;
+    console.log(`\n${results.length} file(s), ${failed} failed, ${chunks} chunks, ${embedded} embedded in ${(embedMs / 1000).toFixed(1)}s` +
+      (embedded ? ` (${(embedded / (embedMs / 1000)).toFixed(1)} chunks/s)` : '') + `, total ${((performance.now() - t0) / 1000).toFixed(1)}s`);
+    if (failed) process.exitCode = 1;
+  }));
+
+ragCmd.command('status')
+  .option('--json', 'machine-readable')
+  .action(ragAction(async (o) => {
+    const s = await rag.status();
+    if (o.json) return console.log(JSON.stringify({ ...s, docs: undefined }, null, 2));
+    console.log(`active model   ${s.active_model}`);
+    console.log(`registry       ${s.registry.entities} entities (version ${s.registry.version})`);
+    console.log(`mongo          ${s.mongo.documents} documents, ${s.mongo.chunks} chunks, ${s.mongo.embedded} embedded (active), ${s.mongo.staging} staged, ${s.mongo.jobs_failed} failed job(s)`);
+    for (const c of s.collections) console.log(`qdrant         ${c.name}: ${c.points} points`);
+    console.log(`by status      ${JSON.stringify(s.documents_by_status)}`);
+    if (s.stale_documents) console.log(`WARNING        ${s.stale_documents} document(s) masked with an older registry: run cadenzza rag remask`);
+    for (const d of s.docs) {
+      console.log(`  ${d._id}  ${d.status.padEnd(10)} ${String(d.chunk_count ?? 0).padStart(4)}  ${d.file_type.padEnd(5)} ${d.title.slice(0, 60)}`);
+    }
+  }));
+
+ragCmd.command('delete <docId>')
+  .description('Remove a document from Mongo, Qdrant, its mirror page and the review queue')
+  .action(ragAction(async (id) => console.log((await rag.deleteDocument(id)) ? 'deleted' : 'not found')));
+
+ragCmd.command('reindex')
+  .description('Rebuild the Qdrant collection entirely from Mongo')
+  .option('--model <id>', 'model (default: active)')
+  .action(ragAction(async (o) => {
+    const r = await rag.reindex({ model: o.model || rag.activeModel() });
+    console.log(`${r.collection}: ${r.points} points written, qdrant count ${r.qdrant_count}, mongo embedded ${r.mongo_embedded}` +
+      (r.qdrant_count === r.mongo_embedded ? '  (match)' : '  MISMATCH'));
+    if (r.qdrant_count !== r.mongo_embedded) process.exitCode = 1;
+  }));
+
+ragCmd.command('reembed')
+  .description('Blue/green: embed all chunks with another model into its own collection (does not switch)')
+  .requiredOption('--model <id>', 'new embedding model')
+  .action(ragAction(async (o) => {
+    const r = await rag.reembed({ model: o.model }, (n) => process.stdout.write(`\r  embedded ${n}`));
+    console.log(`\n${r.collection}: ${r.qdrant_count} points. Evaluate, then: cadenzza rag activate --model ${o.model}`);
+  }));
+
+ragCmd.command('activate')
+  .description('Blue/green: switch retrieval to a fully re-embedded model')
+  .requiredOption('--model <id>', 'model to activate')
+  .action(ragAction(async (o) => {
+    const r = await rag.activate({ model: o.model });
+    console.log(`active model ${r.previous} -> ${r.active} (${r.collection}). Old vectors kept until: cadenzza rag prune --yes`);
+  }));
+
+ragCmd.command('prune')
+  .description('Blue/green: drop collections and vectors of inactive models')
+  .option('--yes', 'confirm')
+  .action(ragAction(async (o) => {
+    if (!o.yes) { console.log('This deletes the vectors of every inactive model. Re-run with --yes to confirm.'); return; }
+    const r = await rag.prune();
+    console.log(r.length ? r.map((d) => `dropped ${d.collection} (${d.vectors_removed} vectors)`).join('\n') : 'nothing to prune');
+  }));
+
+ragCmd.command('remask')
+  .description('Re-apply masking to documents ingested before the latest registry change')
+  .action(ragAction(async () => {
+    const r = await rag.remask();
+    console.log(r.length ? r.map((d) => `  ${d.doc_id}  ${d.changed}/${d.chunks} chunks changed, ${d.reembedded} re-embedded`).join('\n') : 'nothing stale');
+  }));
 
 program.parse();

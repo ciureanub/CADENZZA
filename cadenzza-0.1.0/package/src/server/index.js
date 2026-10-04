@@ -10,6 +10,14 @@ import * as guard from '../entity/guard.js';
 import { search } from '../search/index.js';
 import { paths } from '../config.js';
 import { importDocument } from './importer.js';
+import * as rag from '../rag/ingest.js';
+import * as mongoStore from '../rag/store/mongo.js';
+
+/** Registry changed: re-mask ingested RAG documents in the background (only once RAG is in use). */
+function scheduleRemask() {
+  if (getSetting('rag_ingested', '0') !== '1') return;
+  rag.queue.push(() => rag.remaskAfterRegistryChange()).catch(() => {});
+}
 
 /* ------------------------------------------------------------------ */
 /* Validation helpers                                                  */
@@ -19,7 +27,13 @@ const VALID_SETTINGS = {
   storage_mode:    { enum: ['store-and-mask'] },
   pseudonym_style: { enum: ['coded', 'plausible'] },
   chat_mode:       { enum: ['private', 'public'] },
-  offline:         { enum: ['1', '0'] }
+  offline:         { enum: ['1', '0'] },
+  rag_embed_model: { re: /^[a-z0-9][\w.\-/]*(?::[\w.\-]+)?$/i },
+  rag_gen_model:   { re: /^[a-z0-9][\w.\-/]*(?::[\w.\-]+)?$/i },
+  rag_top_k:       { re: /^(?:[1-9]|1\d|20)$/ },
+  rag_embed_restricted: { enum: ['0', '1'] },
+  rag_create_page: { enum: ['0', '1'] },
+  registry_version: { readOnly: true }
 };
 
 function validatePagePatch(patch) {
@@ -59,6 +73,8 @@ export async function buildServer() {
   await app.register(fstatic, { root: WEB, prefix: '/' });
 
   /* ---- global error handler — always return JSON ---- */
+  app.addHook('onClose', async () => { await mongoStore.close(); });
+
   app.setErrorHandler((err, _req, reply) => {
     const status = err.statusCode || 500;
     reply.code(status).send({ error: err.message || 'Internal server error' });
@@ -93,6 +109,10 @@ export async function buildServer() {
           return reply.code(400).send({ error: `Setting ${k} must be a string` });
         if (validator.enum && !validator.enum.includes(v))
           return reply.code(400).send({ error: `Setting ${k} must be one of: ${validator.enum.join(', ')}` });
+        if (validator.re && !validator.re.test(v))
+          return reply.code(400).send({ error: `Setting ${k} has an invalid value` });
+        if (validator.readOnly)
+          return reply.code(400).send({ error: `Setting ${k} is read-only` });
       }
       setSetting(k, v);
     }
@@ -165,7 +185,9 @@ export async function buildServer() {
       ? aliases
       : String(aliases).split(',').map((s) => s.trim()).filter(Boolean);
     try {
-      return guard.addEntity({ canonical, type, aliases: list, origin: 'user' });
+      const e = guard.addEntity({ canonical, type, aliases: list, origin: 'user' });
+      scheduleRemask();
+      return e;
     } catch (err) {
       return reply.code(400).send({ error: err.message });
     }
@@ -199,6 +221,7 @@ export async function buildServer() {
     if (!occ) return { ok: false };
     if (action === 'protect') {
       const e = guard.addEntity({ canonical: occ.surface, type, origin: 'ner-accepted' });
+      scheduleRemask();
       db().prepare("UPDATE entity_occurrence SET status='confirmed', entity_id=? WHERE id=?").run(e.id, occ.id);
       for (const p of db().prepare('SELECT id, title, body_text FROM page').all()) {
         guard.recordOccurrences(p.id, `${p.title}\n${p.body_text}`);

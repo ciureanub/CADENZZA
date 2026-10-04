@@ -38,7 +38,9 @@ export const RAG = {
   get mongoUri()  { return process.env.CADENZZA_MONGO_URI  || 'mongodb://127.0.0.1:27017/?replicaSet=cadenzza&directConnection=true'; },
   get qdrantUrl() { return process.env.CADENZZA_QDRANT_URL || 'http://127.0.0.1:6333'; },
   get ollamaUrl() { return process.env.CADENZZA_OLLAMA_URL || 'http://127.0.0.1:11434'; },
-  mongoDb: 'cadenzza_rag'
+  /** Overridable so tests run in their own database / collection namespace. */
+  get mongoDb()   { return process.env.CADENZZA_MONGO_DB || 'cadenzza_rag'; },
+  get qdrantPrefix() { return process.env.CADENZZA_QDRANT_PREFIX || 'cadenzza_chunks'; }
 };
 
 export const SENSITIVITY = ['Public', 'Internal', 'Client-Confidential', 'Restricted'];
@@ -55,5 +57,11 @@ export const DEFAULT_SETTINGS = {
   storage_mode: 'store-and-mask',
   pseudonym_style: 'coded',
   chat_mode: 'private',
-  offline: '1'
+  offline: '1',
+  rag_embed_model: 'bge-m3',       // active embedding model (blue/green pointer)
+  rag_gen_model: 'gemma4:latest',
+  rag_top_k: '6',
+  rag_embed_restricted: '0',       // Restricted files are recorded but not embedded unless '1'
+  rag_create_page: '1',            // mirror each ingested file as a source-capture page
+  registry_version: '0'            // bumped on every registry change; stale docs get re-masked
 };

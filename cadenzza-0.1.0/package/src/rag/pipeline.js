@@ -12,7 +12,7 @@ import { chunk, sha256 } from './chunk.js';
  * @param {string} filename   original name; returned masked (filenames carry client names too)
  * @param {object} opts       { docId (required), chunkOpts }
  */
-export async function prepareDocument(buffer, filename, { docId, chunkOpts = {} } = {}) {
+export async function prepareDocument(buffer, filename, { docId, chunkOpts = {}, withLocal = false } = {}) {
   if (!docId) throw new Error('prepareDocument: docId is required');
   const source_sha256 = sha256(buffer);
   const ex = await extract(buffer, filename);
@@ -38,5 +38,9 @@ export async function prepareDocument(buffer, filename, { docId, chunkOpts = {} 
   };
   guard.assertClean({ title: doc.title, filename: doc.filename, warnings: doc.meta.warnings }, `document ${docId}`);
   for (const c of chunks) guard.assertClean(c, `chunk ${c.chunk_index} of ${docId}`);
-  return { ...doc, chunks };
+  const out = { ...doc, chunks };
+  // Real title/html for the SQLite mirror page only (store-and-mask). Non-enumerable so a
+  // spread or JSON.stringify of the result can never carry it into Mongo or Qdrant.
+  if (withLocal) Object.defineProperty(out, 'local', { value: { title: ex.title, html: ex.html }, enumerable: false });
+  return out;
 }

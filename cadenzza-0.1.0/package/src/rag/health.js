@@ -8,6 +8,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { MongoClient } from 'mongodb';
 import { RAG, paths } from '../config.js';
+import { registryVersion } from '../entity/guard.js';
 
 const TIMEOUT_MS = 3000;
 const GB = 1024 ** 3;
@@ -97,11 +98,16 @@ export async function checkMongo() {
     const colls = await db.listCollections({}, { nameOnly: true }).toArray();
     let indexes = 0;
     for (const c of colls) indexes += (await db.collection(c.name).indexes()).length;
+    const regVersion = registryVersion();
+    const stale = await db.collection('documents').countDocuments({ $or: [{ registry_version: { $lt: regVersion } }, { registry_version: { $exists: false } }] });
+    const failed = await db.collection('ingest_jobs').countDocuments({ status: 'failed' });
     return [
       { label: `mongod ${version} reachable`, ok: true },
       { label: `replica set ${hello.setName || '-'} primary`, ok: !!hello.isWritablePrimary && !!hello.setName },
       { label: `database ${RAG.mongoDb}`, ok: true, detail: `${colls.length} collection(s), ${indexes} index(es)${colls.length ? '' : ' - created at first ingest'}` },
-      { label: 'mongo vector search', ok: true, detail: 'n/a (record-only store; Qdrant serves ANN)' }
+      { label: 'mongo vector search', ok: true, detail: 'n/a (record-only store; Qdrant serves ANN)' },
+      { label: 'documents masked with the current registry', ok: true, warn: stale > 0, detail: stale ? `${stale} stale - run: cadenzza rag remask` : 'all current' },
+      { label: 'ingest jobs', ok: true, warn: failed > 0, detail: failed ? `${failed} failed - re-run the ingest to resume` : 'none failed' }
     ];
   } catch (err) {
     return [{ label: 'mongod reachable', ok: false, detail: err.message }];
