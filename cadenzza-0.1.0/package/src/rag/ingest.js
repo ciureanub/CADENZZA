@@ -196,6 +196,7 @@ export async function ingestFile(o) {
       : []; // recorded, not embedded: also clears chunks/points left from an earlier ready version
     const stored = await storeChunks(docRec, rows, embedder);
     setSetting('rag_ingested', '1');
+    saveSource(docId, buffer, { filename, sourceKey, space, sensitivity });
 
     audit('rag.ingest', `doc=${docId} status=${status} chunks=${stored.chunks} embedded=${stored.embedded} model=${embedder.key}`);
     return { doc_id: docId, status, title: prepared.title, ...stored, warnings: prepared.meta.warnings, ms: performance.now() - t0 };
@@ -255,9 +256,41 @@ export async function deleteDocument(docId) {
   await mongo.deleteDocument(docId);
   if (doc?.page_id && pages.get(doc.page_id)) pages.remove(doc.page_id);
   guard.clearDocOccurrences(docId);
+  removeSource(docId);
   audit('rag.delete', `doc=${docId}`);
   emit(docId, 'deleted');
   return !!doc;
+}
+
+/* ------------------------------------------------------------------ local source copies */
+
+/**
+ * The original bytes of each ingested file are kept under CADENZZA_HOME/rag/sources so a document
+ * can be re-ingested (new extractor/chunker) from the UI. Local only and unmasked, like the
+ * mirror page: same back-up / never-commit rule as the database. Mongo and Qdrant never see them.
+ */
+const sourcesDir = () => { const d = path.join(paths.rag, 'sources'); fs.mkdirSync(d, { recursive: true }); return d; };
+const sourcePaths = (docId) => ({ bin: path.join(sourcesDir(), `${docId}.bin`), meta: path.join(sourcesDir(), `${docId}.json`) });
+
+function saveSource(docId, buffer, meta) {
+  const p = sourcePaths(docId);
+  fs.writeFileSync(p.bin, buffer);
+  fs.writeFileSync(p.meta, JSON.stringify(meta));
+}
+
+export function hasSource(docId) { return fs.existsSync(sourcePaths(docId).bin); }
+
+function removeSource(docId) {
+  const p = sourcePaths(docId);
+  for (const f of [p.bin, p.meta]) fs.rmSync(f, { force: true });
+}
+
+/** Re-run the full pipeline on a stored source (force: re-extract, re-chunk, re-embed what changed). */
+export async function reingest(docId) {
+  const p = sourcePaths(docId);
+  if (!fs.existsSync(p.bin)) throw new Error('source file not stored for this document; re-ingest it from disk (cadenzza rag ingest <path> --force)');
+  const meta = JSON.parse(fs.readFileSync(p.meta, 'utf8'));
+  return ingestFile({ ...meta, buffer: fs.readFileSync(p.bin), force: true });
 }
 
 /** Drop and rebuild a model's Qdrant collection entirely from Mongo. */

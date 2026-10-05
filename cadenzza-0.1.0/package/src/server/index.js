@@ -13,6 +13,7 @@ import { importDocument } from './importer.js';
 import * as rag from '../rag/ingest.js';
 import * as mongoStore from '../rag/store/mongo.js';
 import { ask as askQuestion } from '../rag/ask.js';
+import { registerRagRoutes } from './rag-routes.js';
 
 /** Registry changed: re-mask ingested RAG documents in the background (only once RAG is in use). */
 function scheduleRemask() {
@@ -29,7 +30,7 @@ const VALID_SETTINGS = {
   pseudonym_style: { enum: ['coded', 'plausible'] },
   chat_mode:       { enum: ['private', 'public'] },
   offline:         { enum: ['1', '0'] },
-  rag_embed_model: { re: /^[a-z0-9][\w.\-/]*(?::[\w.\-]+)?$/i },
+  rag_embed_model: { readOnly: true, hint: 'switch embedding models with: cadenzza rag reembed --model <id>, then cadenzza rag activate' },
   rag_gen_model:   { re: /^[a-z0-9][\w.\-/]*(?::[\w.\-]+)?$/i },
   rag_top_k:       { re: /^(?:[1-9]|1\d|20)$/ },
   rag_gen_num_gpu: { re: /^(?:auto|\d{1,3})$/ },
@@ -91,7 +92,14 @@ export async function buildServer() {
       storage_mode:    getSetting('storage_mode'),
       pseudonym_style: getSetting('pseudonym_style'),
       chat_mode:       getSetting('chat_mode'),
-      offline:         getSetting('offline')
+      offline:         getSetting('offline'),
+      rag_embed_model: getSetting('rag_embed_model'),
+      rag_gen_model:   getSetting('rag_gen_model'),
+      rag_gen_num_gpu: getSetting('rag_gen_num_gpu', 'auto'),
+      rag_retrieval:   getSetting('rag_retrieval', 'hybrid'),
+      rag_top_k:       getSetting('rag_top_k', '6'),
+      rag_embed_restricted: getSetting('rag_embed_restricted', '0'),
+      rag_create_page: getSetting('rag_create_page', '1')
     },
     counts: {
       pages:      db().prepare('SELECT COUNT(*) c FROM page').get().c,
@@ -116,7 +124,7 @@ export async function buildServer() {
         if (validator.re && !validator.re.test(v))
           return reply.code(400).send({ error: `Setting ${k} has an invalid value` });
         if (validator.readOnly)
-          return reply.code(400).send({ error: `Setting ${k} is read-only` });
+          return reply.code(400).send({ error: `Setting ${k} is read-only${validator.hint ? ` (${validator.hint})` : ''}` });
       }
       setSetting(k, v);
     }
@@ -366,6 +374,8 @@ export async function buildServer() {
   app.get('/api/audit', async () => db().prepare(
     'SELECT ts, action, detail FROM audit_event ORDER BY id DESC LIMIT 200'
   ).all());
+
+  await registerRagRoutes(app);
 
   return app;
 }

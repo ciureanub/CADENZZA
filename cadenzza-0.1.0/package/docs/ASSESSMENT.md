@@ -59,3 +59,13 @@ PPTX added to the ingest formats (user decision, 2026-10-04).
 |---|---|---|---|
 | C7 | ≈ 4 chars/token | bge-m3 on this content: EN prose 3.39, tables 2.56, code 3.0, DE/RO ~4.5 | chunker uses 3.0 / 2.3 per type; real/estimate p50 0.79, max 1.06; no chunk > 512 real tokens |
 | C8 | Wi-Fi-off `doctor` run | not possible on this setup | `infra/offline-guard.mjs` blocks non-loopback sockets/DNS in-process; `doctor` and extractor tests pass under it with 0 attempts |
+
+## 7. v0.1 UI defects found in Phase 6
+
+| # | Where (baseline) | Defect | Status |
+|---|---|---|---|
+| U1 | `web/index.html:247` | `/&lt;\/mark&gt;/g` is a regex syntax error, so the **whole UI script never ran** (no spaces, tree or buttons) | fixed; `test/ui.test.js` compiles the script |
+| U2 | `web/index.html:124-131` (`api()`) | sends `content-type: application/json` with no body on DELETE; Fastify answers 400, so **Retire and Purge never worked** | fixed: header only with a body |
+| U3 | `web/index.html:143`, `:314` | Review button label replaced by the bare count, or by nothing | fixed: "Review (n)" |
+| U4 | `web/index.html:169` | page editor's space select lacks Deployment, and PATCH ignores `space` anyway | open (existing behaviour; not changed) |
+| U5 | design | the sidebar tree shows real page titles (store-and-mask), while Library/Ask show pseudonyms | open — user decision |

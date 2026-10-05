@@ -25,14 +25,16 @@ export const RULES = [
     autoMask: false,
     re: /\b[A-Z][A-Z0-9]{1,9}-\d{1,6}\b/g,
     // Standards, encodings and algorithms look like issue keys but are not: UTF-8, SHA-256, ISO-27001
-    guard: (s) => !/^(?:UTF|UCS|SHA|MD|AES|RSA|DES|TLS|SSL|HTTP|ISO|IEC|EN|DIN|RFC|CVE|CWE|NIST|PCI|SOC|GDPR|ITIL|IPV|COVID|WCAG|ECMA|ES|ANSI|BS|IEEE|X|Y2K)-/.test(s)
+    guard: (s) => !/^(?:ISBN|ISSN|UTF|UCS|SHA|MD|AES|RSA|DES|TLS|SSL|HTTP|ISO|IEC|EN|DIN|RFC|CVE|CWE|NIST|PCI|SOC|GDPR|ITIL|IPV|COVID|WCAG|ECMA|ES|ANSI|BS|IEEE|X|Y2K)-/.test(s)
   },
   {
     name: 'legal-entity',
     type: 'org',
     autoMask: false,
     // A capitalised token (or two) followed by a legal suffix: "Northwind AG", "Acme Holding GmbH"
-    re: /\b(?:[A-Z][\w.&'-]{1,20}\s+){1,3}(?:SE|AG|GmbH|S\.A\.|SRL|S\.R\.L\.|PLC|plc|N\.V\.|NV|S\.p\.A\.|SpA|Ltd|Limited|Inc|LLC|BV|B\.V\.|Oy|AB|A\/S)\b/g
+    re: /\b(?:[A-Z][\w.&'-]{1,20}\s+){1,3}(?:SE|AG|GmbH|S\.A\.|SRL|S\.R\.L\.|PLC|plc|N\.V\.|NV|S\.p\.A\.|SpA|Ltd|Limited|Inc|LLC|BV|B\.V\.|Oy|AB|A\/S)\b/g,
+    // Product editions that end in a legal-looking suffix
+    guard: (s) => !/^(?:Java|Jakarta|Windows|iPhone)\s+SE$/i.test(s)
   },
   {
     name: 'internal-host',
