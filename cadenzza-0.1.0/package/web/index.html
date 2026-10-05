@@ -96,6 +96,7 @@ a:hover{text-decoration:underline}
 .drop{border:1px dashed var(--line);border-radius:4px;padding:20px;text-align:center;color:var(--dim);margin:12px 0;transition:all 100ms}
 .drop.over{border-color:var(--gold);color:var(--gold);background:var(--navy3)}
 .drop .row{max-width:680px;margin:12px auto 0}
+body.dragging::after{content:'Drop to add to the Library';position:fixed;inset:12px;z-index:1000;pointer-events:none;display:flex;align-items:center;justify-content:center;border:2px dashed var(--gold);border-radius:6px;background:rgba(13,21,32,.85);color:var(--gold);font-size:18px}
 .prog{display:grid;grid-template-columns:1fr 92px 120px 1fr;gap:10px;align-items:center;padding:6px 2px;border-bottom:1px solid var(--line);font-size:12.5px}
 .prog .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar{height:4px;background:var(--navy3);border-radius:2px;overflow:hidden}
@@ -636,6 +637,23 @@ async function applyReveal() {
     toast('Names revealed locally — logged in Audit');
   } catch (err) { $('#areveal').checked = false; toast(err.message); }
 }
+
+/* Files dropped anywhere in the window go to the Library (otherwise the browser opens them and leaves the app). */
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+let dragDepth = 0;
+const endDrag = () => { dragDepth = 0; document.body.classList.remove('dragging'); };
+addEventListener('dragenter', (e) => { if (hasFiles(e)) { dragDepth++; document.body.classList.add('dragging'); } });
+addEventListener('dragleave', (e) => { if (hasFiles(e) && --dragDepth <= 0) endDrag(); });
+addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+addEventListener('drop', async (e) => {
+  endDrag();
+  if (!hasFiles(e) || e.defaultPrevented) return; // the Library drop zone handled it
+  e.preventDefault();
+  if (!$('#drop') && DIRTY) return toast('Save or discard the page you are editing, then drop again');
+  const list = await filesFromDrop(e.dataTransfer);
+  if (!$('#drop')) await library();
+  upload(list);
+});
 
 $('#askbtn').addEventListener('click', askView);
 $('#libbtn').addEventListener('click', library);

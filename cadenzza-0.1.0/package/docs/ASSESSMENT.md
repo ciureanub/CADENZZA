@@ -1,4 +1,4 @@
-# CADENZZA 0.1.0 — Phase 0 assessment
+# CADENZZA 0.1.0 → 0.2 — assessment and build notes
 
 Date: 2026-10-04. Line references are to the baseline commit ("Baseline: cadenzza 0.1.0 as found").
 Status column: **fixed** = fixed in Phase 0, **planned** = scheduled in a later phase, **ok** = confirmed as described.
@@ -68,4 +68,17 @@ PPTX added to the ingest formats (user decision, 2026-10-04).
 | U2 | `web/index.html:124-131` (`api()`) | sends `content-type: application/json` with no body on DELETE; Fastify answers 400, so **Retire and Purge never worked** | fixed: header only with a body |
 | U3 | `web/index.html:143`, `:314` | Review button label replaced by the bare count, or by nothing | fixed: "Review (n)" |
 | U4 | `web/index.html:169` | page editor's space select lacks Deployment, and PATCH ignores `space` anyway | open (existing behaviour; not changed) |
-| U5 | design | the sidebar tree shows real page titles (store-and-mask), while Library/Ask show pseudonyms | open — user decision |
+| U5 | design | the sidebar tree shows real page titles (store-and-mask), while Library/Ask show pseudonyms | fixed (Phase 7, user decision): source-capture titles are masked in the tree |
+| U6 | `web/index.html` (Phase 6) | files dropped outside the Library drop zone were opened by the browser, leaving the app | fixed: window-wide drop opens the Library and ingests |
+
+## 8. Phase 7 — evaluation results and decisions
+
+Full tables in README → Performance. Raw results: `CADENZZA_HOME\rag\eval\runs\<cfg>\home\rag\eval\*.json`.
+
+- **Set.** 18 committed synthetic items + 25 private real-corpus items (drafted from the corpus, awaiting user review). Every configuration retrieves all 22 answerable real-corpus items in the top 5: the private set does not discriminate yet; harder, user-worded questions are needed.
+- **Embedding.** bge-m3 vs qwen3-embedding:0.6b: equal recall@5 (0.92), qwen3e recall@10 1.00 vs 0.95, MRR 0.83 both — within one item. **Kept bge-m3** (no reembed).
+- **Chunking.** 250 tokens is worse (0.89 recall@5); merging small sibling sections (<120) +1 item at recall@5. Within noise. **Kept 450 / overlap 15 % / no merge** (`rag_chunk_merge_min` stays available).
+- **Retrieval mode.** Qdrant dense == exact brute force on every config (no ANN loss). Dense MRR 0.86 vs hybrid 0.83 on the synthetic items; **kept hybrid** for code/ID lookups.
+- **Generator.** qwen3:4b-instruct (iGPU): false refusal 8 % (1 genuine: w-03, relevant chunk at rank 1; 2 with nothing retrieved), citation accuracy 0.74, groundedness 0.83, p50 11.8 s. gemma4 8B (CPU): 0 % false refusal, citations 0.67, groundedness 0.91, p50 38.9 s; the run took 3.5 h. **Kept qwen3:4b-instruct; prompt qa-v1 unchanged** (one item does not justify tuning).
+- **Backup.** Live `cadenzza backup` verified (SQLite integrity ok, Mongo EJSON, 17 MB); backup → wipe → restore round trip covered by `test/backup.test.js`.
+

@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { db, getSetting, setSetting, audit } from '../src/db/index.js';
 import * as pages from '../src/pages.js';
 import * as guard from '../src/entity/guard.js';
@@ -16,8 +17,8 @@ import * as mongoStore from '../src/rag/store/mongo.js';
 
 const program = new Command();
 program.name('cadenzza')
-  .description('Local-first release management knowledge base with entity pseudonymisation')
-  .version('0.1.0');
+  .description('Local-first release management knowledge base with entity pseudonymisation and local RAG')
+  .version('0.2.0');
 
 program.command('init')
   .description('Create the database, seed the four spaces and the deliverable templates')
@@ -168,6 +169,23 @@ program.command('doctor')
     process.exitCode = failed ? 1 : 0;
   });
 
+/* ------------------------------------------------------------------ backup */
+
+program.command('backup [dir]')
+  .description('Back up everything: SQLite (online), vault key, RAG corpus (Mongo), source files, eval sets')
+  .action(async (dir) => {
+    const { backupAll } = await import('../src/rag/backup.js');
+    try {
+      const { dir: out, manifest } = await backupAll(dir ? path.resolve(dir) : undefined);
+      console.log(`backup -> ${out}`);
+      console.log(`  sqlite   ${manifest.sqlite.integrity}, ${manifest.sqlite.pages} pages`);
+      console.log(`  vault    ${manifest.vault_key ? 'vault.key copied (store this backup as securely as the original)' : 'passphrase mode: nothing to copy'}`);
+      console.log(`  mongo    ${manifest.mongo_error ? `NOT backed up: ${manifest.mongo_error}` : JSON.stringify(manifest.collections)}`);
+      console.log('  qdrant   derived from Mongo: rebuilt on restore');
+      if (manifest.mongo_error) process.exitCode = 1;
+    } finally { await mongoStore.close(); }
+  });
+
 /* ------------------------------------------------------------------ ask */
 
 program.command('ask <question>')
@@ -294,6 +312,45 @@ ragCmd.command('prune')
     if (!o.yes) { console.log('This deletes the vectors of every inactive model. Re-run with --yes to confirm.'); return; }
     const r = await rag.prune();
     console.log(r.length ? r.map((d) => `dropped ${d.collection} (${d.vectors_removed} vectors)`).join('\n') : 'nothing to prune');
+  }));
+
+ragCmd.command('restore <dir>')
+  .description('Restore the RAG corpus (Mongo + source files) from a backup, then rebuild Qdrant')
+  .option('--replace', 'overwrite a non-empty corpus')
+  .action(ragAction(async (dir, o) => {
+    const { restoreRag } = await import('../src/rag/backup.js');
+    const r = await restoreRag(path.resolve(dir), { replace: !!o.replace });
+    console.log(`restored ${JSON.stringify(r.counts)}` + (r.reindex ? `; ${r.reindex.collection}: ${r.reindex.qdrant_count} points (mongo ${r.reindex.mongo_embedded})` : ''));
+  }));
+
+ragCmd.command('wipe')
+  .description('Delete the whole RAG corpus (Mongo, Qdrant, source copies, mirror pages); wiki, registry and vault stay')
+  .option('--yes', 'confirm')
+  .option('--keep-pages', 'keep the mirror pages in the wiki')
+  .action(ragAction(async (o) => {
+    if (!o.yes) { console.log('This deletes every ingested document, chunk and vector. Back up first (cadenzza backup), then re-run with --yes.'); return; }
+    const { wipeRag } = await import('../src/rag/backup.js');
+    console.log(JSON.stringify(await wipeRag({ keepPages: !!o.keepPages })));
+  }));
+
+ragCmd.command('eval')
+  .description('Evaluate retrieval (and answers) against golden question sets')
+  .option('--set <file...>', 'golden JSONL file(s); default: test/eval/golden.jsonl + CADENZZA_HOME/rag/eval/golden-local.jsonl')
+  .option('--retrieval-only', 'skip generation (fast: recall@k and MRR only)')
+  .option('--mode <mode>', 'hybrid|dense|exact (default: setting rag_retrieval)')
+  .option('--label <name>', 'name for the results file', 'eval')
+  .action(ragAction(async (o) => {
+    const { runEval } = await import('../src/rag/eval.js');
+    const files = o.set || [
+      fileURLToPath(new URL('../test/eval/golden.jsonl', import.meta.url)),
+      path.join(paths.rag, 'eval', 'golden-local.jsonl')
+    ];
+    const r = await runEval({
+      files, retrievalOnly: !!o.retrievalOnly, mode: o.mode, label: o.label,
+      onItem: (it) => console.log(`  ${it.type === 'refuse' ? 'R' : ' '} ${String(it.id).padEnd(10)} rank ${String(it.first_relevant_rank ?? '-').padStart(2)}` +
+        (it.answer != null ? `  ${it.refusal_correct ? 'ok ' : 'BAD'} ${it.must_total ? `must ${it.must_found}/${it.must_total}` : '        '} cited ${it.cited_relevant}/${it.cited}  ${(it.total_ms / 1000).toFixed(1)}s` : ''))
+    });
+    console.log(`\n${JSON.stringify(r.config)}\n${JSON.stringify(r.summary, null, 2)}\nresults: ${r.file}`);
   }));
 
 ragCmd.command('remask')

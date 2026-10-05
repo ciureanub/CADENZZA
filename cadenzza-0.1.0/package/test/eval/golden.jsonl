@@ -1,0 +1,20 @@
+// Golden set over the synthetic fixtures (test/fixtures). Committed. Real-corpus questions live in
+// CADENZZA_HOME/rag/eval/golden-local.jsonl (never committed). Expectations use masked names only.
+{"id":"fx-01","question":"What is the rollback procedure if the cutover fails?","type":"answer","expect":[{"doc":"runbook","section":"Rollback procedure"}],"must_contain":["snapshot"]}
+{"id":"fx-02","question":"Who owns the go/no-go decision?","type":"answer","expect":[{"doc":"runbook","section":"Decision points"},{"doc":"runbook.pdf","section":"release manager owns"}],"must_contain":["release manager"]}
+{"id":"fx-03","question":"What is the deadline for a rollback decision?","type":"answer","expect":[{"doc":"runbook","section":"Decision points"},{"doc":"deck.pptx","section":"T+1h"}],"must_contain":["T+1h"]}
+{"id":"fx-04","question":"Which sandbox gets a full refresh?","type":"answer","expect":[{"doc":"environments.html","section":"Sandboxes"}],"must_contain":["UAT"]}
+{"id":"fx-05","question":"What kind of sandbox is SIT?","type":"answer","expect":[{"doc":"environments.html","section":"Sandboxes"}],"must_contain":["Partial"]}
+{"id":"fx-06","question":"What has to be checked before go-live?","type":"answer","expect":[{"doc":"checklist.md","section":"Pre-checks"}],"must_contain":["Backups verified","Smoke tests"]}
+{"id":"fx-07","question":"Who owns the DNS cutover?","type":"answer","expect":[{"doc":"checklist.md","section":"DNS cutover"}],"must_contain":["ops"]}
+{"id":"fx-08","question":"Which command validates a deployment without committing it?","type":"answer","expect":[{"doc":"checklist.md","section":"--dry-run"}],"must_contain":["--dry-run"]}
+{"id":"fx-09","question":"What does the release train deck say about the rollback strategy?","type":"answer","expect":[{"doc":"deck.pptx","section":"Rollback strategy"}],"must_contain":["Freeze deployments"]}
+{"id":"fx-10","question":"Which deadline is mentioned in the speaker notes of the deck?","type":"answer","expect":[{"doc":"deck.pptx","section":"Speaker notes"}],"must_contain":["T+1h"]}
+{"id":"fx-11","question":"When is the München cutover window?","type":"answer","expect":[{"doc":"confluence","section":"Saturday"}],"must_contain":["Saturday","Sunday"]}
+{"id":"fx-12","question":"Wer übernimmt die Kommunikation laut Runbook?","type":"answer","expect":[{"doc":"runbook","section":"Communications"}],"must_contain":["Müller"]}
+{"id":"fx-13","question":"Who sends the go-live note?","type":"answer","expect":[{"doc":"runbook.pdf","section":"Communications","page":3}],"must_contain":["Müller"]}
+{"id":"fx-14","question":"Which sandboxes are refreshed and how often?","type":"answer","expect":[{"doc":"environments.html"}],"must_contain":["monthly"]}
+{"id":"fx-15","question":"What does Herr Müller own according to the notes?","type":"answer","expect":[{"doc":"notes-cp1252.txt"}],"must_contain":["rollback"]}
+{"id":"fx-r1","question":"What is on the office canteen menu on Friday?","type":"refuse","expect":[]}
+{"id":"fx-r2","question":"What was the company's revenue forecast for 2027?","type":"refuse","expect":[]}
+{"id":"fx-r3","question":"Who won the football world cup in 2026?","type":"refuse","expect":[]}

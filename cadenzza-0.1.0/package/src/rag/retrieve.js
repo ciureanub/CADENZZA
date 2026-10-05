@@ -31,7 +31,7 @@ export async function retrieve(question, o = {}) {
 
   let t = performance.now();
   const embedder = await getEmbedder(o.model || activeModel());
-  const [vector] = await embedder.embed([question_masked]);
+  const vector = embedder.embedQuery ? await embedder.embedQuery(question_masked) : (await embedder.embed([question_masked]))[0];
   const embed_ms = ms(t);
 
   t = performance.now();

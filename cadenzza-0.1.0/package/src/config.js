@@ -63,6 +63,8 @@ export const DEFAULT_SETTINGS = {
   rag_gen_num_gpu: 'auto',         // 'auto' or a layer count; '0' forces the generator onto the CPU
   rag_retrieval: 'hybrid',         // hybrid (Qdrant dense + Mongo lexical, RRF) | dense | exact
   rag_context_tokens: '1200',      // budget for retrieved context in the prompt
+  rag_chunk_tokens: '450',         // chunk target (estimated tokens); a change re-chunks on re-ingest
+  rag_chunk_merge_min: '0',        // merge sibling sections while a chunk is below this size (0 = off)
   rag_top_k: '6',
   rag_embed_restricted: '0',       // Restricted files are recorded but not embedded unless '1'
   rag_create_page: '1',            // mirror each ingested file as a source-capture page

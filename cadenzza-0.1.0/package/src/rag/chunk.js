@@ -15,7 +15,13 @@
 import crypto from 'node:crypto';
 
 export const CHUNKER_VERSION = '1.0.0';
-export const DEFAULTS = { targetTokens: 450, overlapRatio: 0.15 };
+export const DEFAULTS = { targetTokens: 450, overlapRatio: 0.15, mergeMinTokens: 0 };
+
+/** Compact, comparable description of a chunking run, stored with every chunk and document. */
+export const chunkerConfig = (opts = {}) => {
+  const o = { ...DEFAULTS, ...opts };
+  return `${CHUNKER_VERSION}/t${o.targetTokens}/o${Math.round(o.overlapRatio * 100)}/m${o.mergeMinTokens}`;
+};
 
 const CPT = { table: 2.3, code: 2.3, list: 2.8, default: 3.0 };
 const cpt = (type) => CPT[type] || CPT.default;
@@ -122,7 +128,7 @@ function overlapTail(cur, budget) {
  *                    token_estimate, overlap_tokens, chunk_sha256, chunker_version }
  */
 export function chunk(blocks, opts = {}) {
-  const { title = '', targetTokens, overlapRatio } = { ...DEFAULTS, ...opts };
+  const { title = '', targetTokens, overlapRatio, mergeMinTokens } = { ...DEFAULTS, ...opts };
 
   // 1. sections
   const sections = [];
@@ -177,5 +183,58 @@ export function chunk(blocks, opts = {}) {
     }
     emit();
   }
-  return chunks;
+  const config = chunkerConfig({ targetTokens, overlapRatio, mergeMinTokens });
+  const out = mergeMinTokens > 0 ? mergeSmall(chunks, { title, targetTokens, mergeMinTokens }) : chunks;
+  return out.map((c, i) => ({ ...c, chunk_index: i, chunker_config: config }));
+}
+
+/* ------------------------------------------------------------------ optional: merge tiny sections */
+
+const bodyTokens = (c) => estimateTokens(c.text, c.block_types.includes('table') ? 'table' : c.block_types.includes('code') ? 'code' : 'paragraph');
+const commonPrefix = (a, b) => { const out = []; for (let i = 0; i < Math.min(a.length, b.length) && a[i] === b[i]; i++) out.push(a[i]); return out; };
+
+/**
+ * Many short sections (one-line template hints, "Step 12" headings) make thin chunks. Consecutive
+ * chunks under a shared parent heading are merged while the running chunk is below mergeMinTokens
+ * and the result fits the target. The dropped child headings are kept inline as the first line of
+ * their part, so nothing is lost; the breadcrumb becomes the shared parent path.
+ */
+function mergeSmall(chunks, { title, targetTokens, mergeMinTokens }) {
+  const out = [];
+  let group = null;
+  const build = (g) => {
+    const text = g.parts.map((p) => {
+      const own = p.heading_path.slice(g.path.length);
+      return own.length ? `${own.join(SEP)}\n${p.text}` : p.text;
+    }).join('\n\n');
+    const prefix = [title, ...g.path].filter((x, i, a) => x && x !== a[i - 1]).join(SEP);
+    const embed_text = prefix ? `${prefix}\n\n${text}` : text;
+    const pages = g.parts.flatMap((p) => [p.page_start, p.page_end]).filter((p) => p != null);
+    return {
+      heading_path: g.path,
+      text,
+      embed_text,
+      page_start: pages.length ? Math.min(...pages) : null,
+      page_end: pages.length ? Math.max(...pages) : null,
+      block_types: [...new Set(g.parts.flatMap((p) => p.block_types))],
+      token_estimate: estimateTokens(prefix) + g.parts.reduce((n, p) => n + bodyTokens(p) + estimateTokens(p.heading_path.slice(g.path.length).join(SEP)), 0),
+      overlap_tokens: g.parts.reduce((n, p) => n + p.overlap_tokens, 0),
+      chunk_sha256: sha256(embed_text),
+      chunker_version: CHUNKER_VERSION
+    };
+  };
+  for (const c of chunks) {
+    if (group) {
+      const path = commonPrefix(group.path, c.heading_path);
+      const candidate = { path, parts: [...group.parts, c] };
+      if (path.length >= 1 && build(group).token_estimate < mergeMinTokens && build(candidate).token_estimate <= targetTokens) {
+        group = candidate;
+        continue;
+      }
+      out.push(build(group));
+    }
+    group = { path: c.heading_path, parts: [c] };
+  }
+  if (group) out.push(build(group));
+  return out;
 }

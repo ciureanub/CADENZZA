@@ -36,6 +36,8 @@ const VALID_SETTINGS = {
   rag_gen_num_gpu: { re: /^(?:auto|\d{1,3})$/ },
   rag_retrieval:   { enum: ['hybrid', 'dense', 'exact'] },
   rag_context_tokens: { re: /^(?:[4-9]\d{2}|[1-3]\d{3}|4000)$/ },
+  rag_chunk_tokens: { re: /^(?:1[5-9]\d|[2-9]\d{2}|1000)$/ },
+  rag_chunk_merge_min: { re: /^(?:0|[1-9]\d|[12]\d{2}|300)$/ },
   rag_embed_restricted: { enum: ['0', '1'] },
   rag_create_page: { enum: ['0', '1'] },
   registry_version: { readOnly: true }
@@ -133,7 +135,10 @@ export async function buildServer() {
   });
 
   /* ---------- pages ---------- */
-  app.get('/api/space/:key/tree', async (req) => pages.tree(req.params.key));
+  // Ingested-file mirror pages show their pseudonymised title in the tree, matching Library and Ask
+  // (the page itself still holds the real text locally: store-and-mask).
+  app.get('/api/space/:key/tree', async (req) => pages.tree(req.params.key)
+    .map((r) => (r.type === 'source-capture' ? { ...r, title: guard.mask(r.title) } : r)));
 
   app.get('/api/page/:id', async (req, reply) => {
     const p = pages.get(Number(req.params.id));

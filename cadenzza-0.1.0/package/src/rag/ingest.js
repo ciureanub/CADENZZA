@@ -21,7 +21,7 @@ import * as pages from '../pages.js';
 import { getSetting, setSetting, audit } from '../db/index.js';
 import { paths, SENSITIVITY, RAG } from '../config.js';
 import { prepareDocument } from './pipeline.js';
-import { chunkId, uuidv5, sha256, CHUNKER_VERSION } from './chunk.js';
+import { chunkId, uuidv5, sha256, CHUNKER_VERSION, chunkerConfig } from './chunk.js';
 import { SUPPORTED } from './extract/index.js';
 import { getEmbedder, modelKey } from './embed/index.js';
 import * as mongo from './store/mongo.js';
@@ -31,6 +31,12 @@ export const events = new EventEmitter();
 const EMBED_BATCH = 32;
 
 export const activeModel = () => getSetting('rag_embed_model', 'bge-m3');
+
+/** Chunking parameters from settings (evaluated in Phase 7; recorded on every chunk). */
+export const chunkOptions = () => ({
+  targetTokens: Number(getSetting('rag_chunk_tokens', '450')),
+  mergeMinTokens: Number(getSetting('rag_chunk_merge_min', '0'))
+});
 
 /** Stable, non-reversible doc id: HMAC (vault key) of space + source path. Same file, same id. */
 export function docIdFor(space, sourceKey) {
@@ -108,6 +114,7 @@ const toRows = (docId, chunks, base) => chunks.map((c) => ({
   overlap_tokens: c.overlap_tokens,
   chunk_sha256: c.chunk_sha256,
   chunker_version: c.chunker_version,
+  chunker_config: c.chunker_config,
   ...base
 }));
 
@@ -132,10 +139,12 @@ export async function ingestFile(o) {
   const sha = sha256(buffer);
   const embedder = await getEmbedder(o.model || activeModel());
   const regVersion = guard.registryVersion();
+  const chunkOpts = chunkOptions();
+  const chunk_config = chunkerConfig(chunkOpts);
 
   const existing = await mongo.getDocument(docId);
   if (!force && existing && existing.source_sha256 === sha && existing.registry_version === regVersion
-      && existing.sensitivity === sensitivity && (existing.status !== 'ready' || existing.embed_models?.includes(embedder.key))
+      && existing.sensitivity === sensitivity && (existing.chunker_config ?? chunkerConfig()) === chunk_config && (existing.status !== 'ready' || existing.embed_models?.includes(embedder.key))
       && (await mongo.getJob(docId))?.status === 'done') {
     emit(docId, 'unchanged');
     return { doc_id: docId, status: 'unchanged', title: existing.title, chunks: existing.chunk_count, ms: performance.now() - t0 };
@@ -150,7 +159,7 @@ export async function ingestFile(o) {
   emit(docId, 'started', { filename: guard.mask(filename) });
   try {
     const createPage = getSetting('rag_create_page', '1') === '1';
-    const prepared = await prepareDocument(buffer, filename, { docId, withLocal: createPage });
+    const prepared = await prepareDocument(buffer, filename, { docId, withLocal: createPage, chunkOpts });
     for (const s of ['extracted', 'masked']) await mongo.updateJob(docId, { filename: prepared.filename }, s);
     emit(docId, 'masked', { title: prepared.title, occurrences: prepared.occurrences });
 
@@ -181,6 +190,7 @@ export async function ingestFile(o) {
       extractor: prepared.meta.extractor,
       extractor_version: prepared.meta.extractor_version,
       chunker_version: CHUNKER_VERSION,
+      chunker_config: chunk_config,
       warnings: prepared.meta.warnings,
       needs_ocr: !!prepared.meta.needs_ocr,
       occurrences: prepared.occurrences,

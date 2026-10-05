@@ -1,7 +1,7 @@
 {
   "name": "cadenzza",
-  "version": "0.1.0",
-  "description": "Local-first knowledge base and deliverable library for release, deployment, environment and stakeholder management, with entity pseudonymisation.",
+  "version": "0.2.0",
+  "description": "Local-first knowledge base and deliverable library for release, deployment, environment and stakeholder management, with entity pseudonymisation and fully local retrieval-augmented Q&A.",
   "type": "module",
   "bin": {
     "cadenzza": "./bin/cadenzza.js"
@@ -17,6 +17,7 @@
     "bin/",
     "src/",
     "web/",
+    "infra/",
     "README.md",
     "LICENSE"
   ],
@@ -30,7 +31,12 @@
     "knowledge-base",
     "devops",
     "salesforce",
-    "pseudonymisation"
+    "pseudonymisation",
+    "rag",
+    "local-llm",
+    "ollama",
+    "qdrant",
+    "mongodb"
   ],
   "license": "MIT",
   "dependencies": {

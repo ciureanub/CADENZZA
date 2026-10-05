@@ -91,3 +91,26 @@ test('uuidv5 matches the RFC 4122 layout and is stable', () => {
 test('estimateTokens is conservative per type', () => {
   assert.ok(estimateTokens('a'.repeat(300), 'table') > estimateTokens('a'.repeat(300), 'paragraph'));
 });
+
+test('mergeMinTokens merges tiny sibling sections under their parent, keeping child headings inline', () => {
+  const blocks = [H(1, 'Plan', ['Plan'])];
+  for (let i = 1; i <= 6; i++) blocks.push(H(2, `Step ${i}`, ['Plan', `Step ${i}`]), P(`Do thing ${i}.`, ['Plan', `Step ${i}`], i));
+  blocks.push(H(1, 'Other', ['Other']), P('Separate top-level section.', ['Other']));
+  const plain = chunk(blocks, { title: 'T' });
+  const merged = chunk(blocks, { title: 'T', mergeMinTokens: 120 });
+  assert.equal(plain.length, 7);
+  assert.equal(merged.length, 2, 'six steps -> one chunk; the other top-level section stays separate');
+  assert.deepEqual(merged[0].heading_path, ['Plan']);
+  assert.match(merged[0].text, /^Step 1\nDo thing 1\.\n\nStep 2\nDo thing 2\./);
+  assert.deepEqual([merged[0].page_start, merged[0].page_end], [1, 6]);
+  assert.deepEqual(merged[1].heading_path, ['Other']);
+  assert.equal(merged[0].chunker_config, '1.0.0/t450/o15/m120');
+  assert.equal(plain[0].chunker_config, '1.0.0/t450/o15/m0');
+  assert.deepEqual(merged.map((c) => c.chunk_index), [0, 1]);
+});
+
+test('merging never exceeds the target', () => {
+  const blocks = [H(1, 'Plan', ['Plan'])];
+  for (let i = 1; i <= 40; i++) blocks.push(H(2, `S${i}`, ['Plan', `S${i}`]), P(longPara(2, i * 2), ['Plan', `S${i}`]));
+  for (const c of chunk(blocks, { title: 'T', mergeMinTokens: 300 })) assert.ok(c.token_estimate <= DEFAULTS.targetTokens, String(c.token_estimate));
+});

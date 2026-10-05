@@ -34,6 +34,15 @@ async function post(path, body) {
   throw new Error(`ollama ${path} failed after ${RETRIES + 1} attempts: ${last?.message}`);
 }
 
+/**
+ * Query-side instructions for models trained with asymmetric prompts (documents are embedded as-is).
+ * bge-m3 needs none. Part of the retrieval configuration: changing it requires no re-embed.
+ */
+const QUERY_PREFIX = [
+  [/^qwen3-embedding/, 'Instruct: Given a question about project documentation, retrieve passages that answer it\nQuery: ']
+];
+export const queryPrefixFor = (id) => (QUERY_PREFIX.find(([re]) => re.test(id)) || [null, ''])[1];
+
 /** Resolve model metadata (digest, dimension) once, then embed in batches. */
 export async function ollamaEmbedder(id) {
   const tag = id.includes(':') ? id : `${id}:latest`;
@@ -42,11 +51,15 @@ export async function ollamaEmbedder(id) {
   if (!model) throw new Error(`embedding model ${tag} is not pulled (ollama pull ${id})`);
   const [probe] = (await post('/api/embed', { model: id, input: ['dimension probe'] })).embeddings;
 
+  const prefix = queryPrefixFor(id);
   return {
     id,
     key: modelKey(id),
     dim: probe.length,
     digest: model.digest,
+    queryPrefix: prefix,
+    /** Embed a search query (with the model's query instruction, if any). */
+    async embedQuery(text) { return (await this.embed([prefix + text]))[0]; },
     async embed(texts) {
       const out = [];
       for (let i = 0; i < texts.length; i += BATCH) {
