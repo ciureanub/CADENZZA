@@ -163,7 +163,21 @@ export function hybrid(raw, limit = 50, k = 60) {
     .map((r, i) => ({ ...r, mode: 'hybrid', rank: i + 1 }));
 }
 
+/** Filters only, no text (e.g. "tag:environment"): every matching page, most recently updated first. */
+export function filtered(raw, limit = 50) {
+  const { text, filters } = parseQuery(raw);
+  if (text || !Object.keys(filters).length) return [];
+  const { sql, params } = whereClause(filters);
+  return db().prepare(
+    `SELECT p.id, p.title, p.type, p.sensitivity, p.updated_at, s.key AS space, substr(p.body_text, 1, 160) AS snippet
+       FROM page p JOIN space s ON s.id = p.space_id
+      WHERE 1 = 1${sql}
+      ORDER BY p.updated_at DESC, p.title LIMIT ?`
+  ).all(...params, limit).map((r, i) => ({ ...r, score: 0, mode: 'filter', rank: i + 1 }));
+}
+
 export function search(raw, mode = 'hybrid', limit = 50) {
+  if (!parseQuery(raw).text) return filtered(raw, limit);
   if (mode === 'strict') return strict(raw, limit);
   if (mode === 'fuzzy') return fuzzy(raw, limit);
   return hybrid(raw, limit);

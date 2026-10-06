@@ -2,7 +2,7 @@ import './_env.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as pages from '../src/pages.js';
-import { parseQuery, levenshtein, strict, fuzzy, hybrid } from '../src/search/index.js';
+import { parseQuery, levenshtein, strict, fuzzy, hybrid, search } from '../src/search/index.js';
 
 test('parseQuery splits field filters from free text', () => {
   assert.deepEqual(parseQuery('cutover space:release tag:"go live" type:deliverable'), {
@@ -41,4 +41,11 @@ test('hybrid fuses both lists with RRF (k=60)', () => {
   assert.equal(top.title, 'Cutover Plan');
   assert.deepEqual(top.modes.sort(), ['fuzzy', 'strict']);
   assert.ok(Math.abs(top.rrf - 2 / 61) < 1e-12, `rrf=${top.rrf}`);
+});
+
+test('a filter-only query lists matching pages (e.g. type:template), an empty query lists nothing', () => {
+  assert.deepEqual(search('type:template').map((r) => r.title), ['Smoke Test Checklist']);
+  assert.equal(search('type:template')[0].mode, 'filter');
+  assert.deepEqual(search('space:environment').map((r) => r.title).sort(), ['Cutover Plan', 'Smoke Test Checklist']);
+  assert.deepEqual(search(''), []);
 });
