@@ -7,7 +7,8 @@ Commands are PowerShell. Your data folder is `C:\E.ON\cadenzza` (`CADENZZA_HOME`
 
 ## Step 0 — One-time: make `cadenzza` the 0.2 version
 
-The `cadenzza` command on this laptop is still the old **0.1.0** install. Check:
+Done on this laptop (2026-10-06): `cadenzza` is linked to this folder, so code changes apply
+immediately. On another machine, or if it ever reverts, check:
 
 ```powershell
 cadenzza --version          # must say 0.2.0
@@ -17,7 +18,7 @@ If it says 0.1.0, point it at the 0.2 code (one time):
 
 ```powershell
 cd C:\E.ON\CADENZZA\cadenzza-0.1.0\package
-npm link                    # replaces the global 0.1.0 command with this folder
+npm link                    # replaces any global install with this folder
 cadenzza --version          # 0.2.0
 ```
 
