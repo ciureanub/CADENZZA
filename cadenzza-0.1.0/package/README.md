@@ -131,7 +131,7 @@ cadenzza mask [text]                        mask via stdin or argument
 cadenzza scan [dir]                         leak check; exit 1 on finding
 cadenzza search <query> [-m mode]           wiki search from the terminal
 cadenzza ask "<question>" [--mode] [--space] [--type] [--context] [--json]
-cadenzza doctor [--no-rag]                  integrity, services, models + digests, loopback-only binds, disk
+cadenzza doctor [--no-rag] [-p 4173]        integrity, UI port (free / CADENZZA running / other program), services, models, loopback-only binds, disk
 cadenzza backup [dir]                       SQLite (online) + vault key + RAG corpus + source files
 
 cadenzza rag ingest <file|dir> [--space] [--sensitivity] [--force] [--allow-empty-registry]

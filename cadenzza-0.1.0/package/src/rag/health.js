@@ -39,18 +39,57 @@ export async function checkEndpoints() {
   return out;
 }
 
+/** Windows: listening sockets on a port as [{ addr, pid }] (from `netstat -ano`). */
+function listening(port, lines = execFileSync('netstat', ['-ano'], { encoding: 'utf8', windowsHide: true }).split(/\r?\n/)) {
+  return lines
+    .map((l) => l.match(new RegExp(`^\\s*TCP\\s+(\\S+):${port}\\s+\\S+\\s+LISTENING\\s+(\\d+)`)))
+    .filter(Boolean).map((m) => ({ addr: m[1].replace(/^\[|\]$/g, ''), pid: Number(m[2]) }));
+}
+
+/** Windows: image name of a pid, or '' if unknown. */
+function processName(pid) {
+  try {
+    const row = execFileSync('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], { encoding: 'utf8', windowsHide: true });
+    return (row.match(/^"([^"]+)"/m) || [])[1] || '';
+  } catch { return ''; }
+}
+
 /** Windows: nothing on the service ports may listen on a non-loopback address. */
 export function checkListeners(ports = [27017, 6333, 6334, 11434]) {
   if (process.platform !== 'win32') return [{ label: 'listener bind check', ok: true, detail: 'skipped (non-Windows)' }];
   const lines = execFileSync('netstat', ['-ano'], { encoding: 'utf8', windowsHide: true }).split(/\r?\n/);
-  const out = [];
-  for (const port of ports) {
-    const binds = lines
-      .map((l) => l.match(new RegExp(`^\\s*TCP\\s+(\\S+):${port}\\s+\\S+\\s+LISTENING\\s+\\d+`)))
-      .filter(Boolean).map((m) => m[1].replace(/^\[|\]$/g, ''));
-    out.push({ label: `port ${port} bound to loopback only`, ok: binds.length > 0 && binds.every(isLoopback), detail: binds.join(', ') || 'not listening' });
+  return ports.map((port) => {
+    const binds = listening(port, lines).map((b) => b.addr);
+    return { label: `port ${port} bound to loopback only`, ok: binds.length > 0 && binds.every(isLoopback), detail: binds.join(', ') || 'not listening' };
+  });
+}
+
+/**
+ * Who holds the UI port: nothing (serve can start), a running CADENZZA (open it), or another
+ * process (serve would fail with EADDRINUSE). Returns { state: 'free'|'cadenzza'|'other', pid?, name?, binds? }.
+ */
+export async function probeServerPort(port = 4173, host = '127.0.0.1') {
+  const binds = process.platform === 'win32' ? listening(port) : [];
+  let meta = null;
+  try { meta = await getJson(`http://${host}:${port}/api/meta`); } catch { /* not CADENZZA, or nothing there */ }
+  const isCadenzza = !!(meta && Array.isArray(meta.spaces) && meta.settings && 'storage_mode' in meta.settings);
+  if (!binds.length && !isCadenzza) return { state: 'free' };
+  const pid = binds[0]?.pid;
+  return { state: isCadenzza ? 'cadenzza' : 'other', pid, name: pid ? processName(pid) : '', binds: binds.map((b) => b.addr) };
+}
+
+/** doctor line for the UI port. A running CADENZZA is fine; another process is a failure. */
+export async function checkServerPort(port = 4173, host = '127.0.0.1') {
+  const p = await probeServerPort(port, host);
+  const who = p.pid ? `pid ${p.pid}${p.name ? ` ${p.name}` : ''}` : '';
+  if (p.state === 'free') return { label: `UI port ${port} free`, ok: true, detail: '`cadenzza serve` can start' };
+  if (p.state === 'cadenzza') {
+    const loop = p.binds.every(isLoopback);
+    return { label: `CADENZZA already running on ${port}`, ok: loop, warn: loop,
+      detail: `${who}; open http://${host}:${port}${loop ? '' : ` — bound to ${p.binds.join(', ')}, not loopback only`}; use it instead of starting another \`cadenzza serve\`` };
   }
-  return out;
+  return { label: `UI port ${port} in use by another program`, ok: false,
+    detail: `${who || 'unknown process'} on ${p.binds.join(', ')}; stop it, or run \`cadenzza serve -p <other port>\`` };
 }
 
 /** Ollama reachable, and each required model present; reports digests for lineage. */

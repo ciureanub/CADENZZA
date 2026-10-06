@@ -210,4 +210,5 @@ real protected name is found.
 | Answer very slow or empty with a big model | Settings → *Answer model runs on: CPU only* |
 | Dropping a file opens it in the browser | Reload the page (Ctrl+F5) to get the current UI |
 | `cadenzza --version` says 0.1.0 | Step 0 |
-| Port in use / service won't start | `infra\status-rag.ps1`, then `infra\stop-rag.ps1` and start again |
+| `cadenzza serve`: *Port 4173 is already in use* | `cadenzza doctor` says who holds it. **CADENZZA already running** → just open http://127.0.0.1:4173 (or close the other `serve` window first). **Another program** → stop it (pid shown), or `cadenzza serve -p 4174` |
+| A service port is in use / won't start | `infra\status-rag.ps1`, then `infra\stop-rag.ps1` and start again |

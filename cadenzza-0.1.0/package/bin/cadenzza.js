@@ -11,7 +11,7 @@ import { search } from '../src/search/index.js';
 import { seedTemplates } from '../src/seed/templates.js';
 import { buildServer } from '../src/server/index.js';
 import { paths } from '../src/config.js';
-import { ragChecks } from '../src/rag/health.js';
+import { ragChecks, checkServerPort } from '../src/rag/health.js';
 import * as rag from '../src/rag/ingest.js';
 import * as mongoStore from '../src/rag/store/mongo.js';
 
@@ -53,7 +53,16 @@ program.command('serve')
     db();
     if (!db().prepare("SELECT COUNT(*) c FROM page WHERE type='template'").get().c) seedTemplates(pages);
     const app = await buildServer();
-    await app.listen({ port: Number(opts.port), host: opts.host });
+    try {
+      await app.listen({ port: Number(opts.port), host: opts.host });
+    } catch (err) {
+      if (err.code !== 'EADDRINUSE') throw err;
+      const c = await checkServerPort(Number(opts.port), opts.host);
+      console.error(`\n  Port ${opts.port} is already in use: ${c.label}`);
+      console.error(`  ${c.detail}\n`);
+      await app.close();
+      process.exit(1);
+    }
     console.log(`\n  CADENZZA  ->  http://${opts.host}:${opts.port}`);
     console.log(`  data      ->  ${paths.home}`);
     console.log(`  mode      ->  ${getSetting('storage_mode')} / offline=${getSetting('offline')}\n`);
@@ -140,6 +149,7 @@ program.command('search <query>')
 program.command('doctor')
   .description('Environment and integrity check')
   .option('--no-rag', 'skip the local RAG service checks (Mongo, Qdrant, Ollama)')
+  .option('-p, --port <port>', 'UI port to check', '4173')
   .action(async (opts) => {
     const d = db();
     let failed = 0;
@@ -159,6 +169,10 @@ program.command('doctor')
     console.log(`  candidates  ${d.prepare("SELECT COUNT(*) c FROM entity_occurrence WHERE status='candidate'").get().c}`);
     console.log(`  storage     ${getSetting('storage_mode')}`);
     console.log(`  offline     ${getSetting('offline')}`);
+
+    console.log('\nCADENZZA server\n');
+    const sp = await checkServerPort(Number(opts.port));
+    ok(sp.label, sp.ok, sp.detail, sp.warn);
 
     if (opts.rag) {
       const models = [getSetting('rag_embed_model', 'bge-m3'), getSetting('rag_gen_model', 'gemma4:latest')];
