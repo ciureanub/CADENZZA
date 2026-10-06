@@ -134,7 +134,7 @@ details.src .chunk{white-space:pre-wrap;color:var(--dim);font-size:12.5px;margin
   </aside>
   <main>
     <header>
-      <input id="q" placeholder="Search   —   space:release  tag:cutover  sensitivity:Restricted  &quot;exact phrase&quot;">
+      <input id="q" placeholder="Search   —   tag:environment  type:template  sensitivity:Restricted  &quot;exact phrase&quot;">
       <select id="mode"><option value="hybrid">Hybrid</option><option value="strict">Strict</option><option value="fuzzy">Fuzzy</option></select>
       <span class="mode" id="chatmode">PRIVATE</span>
       <button class="btn" id="askbtn" title="Ask the ingested material (answers cite their sources)">Ask</button>
@@ -160,6 +160,8 @@ const esc = (s) => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); };
 
 let META = null, SPACE = 'release', PAGE = null, DIRTY = false, SRC = false;
+/** Space pickers are hidden while there is only one space (0.2 merged everything into Release Management). */
+const ONE_SPACE = () => (META.spaces.length < 2 ? ' hidden' : '');
 
 async function boot() {
   META = await api('/meta');
@@ -192,7 +194,8 @@ async function openPage(id) {
   $('#wrap').innerHTML = `<h2 class="sec">${esc(PAGE.title)}</h2>
   <div class="row">
     <input id="title" value="${esc(PAGE.title)}">
-    <select id="space">${META.spaces.map((s) => `<option value="${s.key}"${s.key === PAGE.space_key ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
+    <select id="space"${ONE_SPACE()}>${META.spaces.map((s) => `<option value="${s.key}"${s.key === PAGE.space_key ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
+    ${PAGE.tags?.length ? `<span class="dim" title="Former space or label; search with tag:name">${PAGE.tags.map((x) => '#' + esc(x)).join(' ')}</span>` : ''}
     <select id="sensitivity"><option value="Public"${PAGE.sensitivity==='Public'?' selected':''}>Public</option><option value="Restricted"${PAGE.sensitivity==='Restricted'?' selected':''}>Restricted</option><option value="Client-Confidential"${PAGE.sensitivity==='Client-Confidential'?' selected':''}>Client-Confidential</option></select>
     <button class="btn" onclick="save()">Save</button>
     <button class="btn" onclick="exportPage()">Export</button>
@@ -404,7 +407,7 @@ async function library() {
   <div class="drop" id="drop">
     <div>Drop PDF, DOCX, DOC, PPTX, HTML, Markdown, TXT or MHTML files — or whole folders</div>
     <div class="row">
-      <select id="ispace" title="Space for the mirror pages">${spaces}</select>
+      <select id="ispace" title="Space for the mirror pages"${ONE_SPACE()}>${spaces}</select>
       <select id="isens" title="Sensitivity"><option value="">space default sensitivity</option><option>Public</option><option>Internal</option><option>Client-Confidential</option><option>Restricted</option></select>
       <button class="btn" id="pickf">Choose files</button>
       <button class="btn" id="pickd">Choose folder</button>
@@ -544,7 +547,7 @@ function askView() {
   <p class="lede">Answers come only from the ingested material and cite their sources. Your question is pseudonymised before it is searched, and the local model only ever sees pseudonyms.</p>
   <div class="row"><input id="aq" style="flex:5" placeholder="e.g. What is our rollback procedure for a failed cutover?"><button class="btn p" id="ago" style="flex:0 0 auto">Ask</button></div>
   <div class="row" style="font-size:12px">
-    <select id="aspace"><option value="">all spaces</option>${spaces}</select>
+    <select id="aspace"${ONE_SPACE()}><option value="">all spaces</option>${spaces}</select>
     <select id="atype"><option value="">all file types</option>${['pdf', 'docx', 'doc', 'pptx', 'html', 'md', 'txt', 'mhtml'].map((t) => `<option>${t}</option>`).join('')}</select>
     <select id="amode"><option value="">retrieval: default</option><option>hybrid</option><option>dense</option><option>exact</option></select>
     <label style="flex:0 0 auto;align-self:center" title="Show real names instead of pseudonyms. Every reveal is written to the Audit log."><input type="checkbox" id="areveal"> Reveal names</label>

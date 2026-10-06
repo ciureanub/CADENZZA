@@ -38,6 +38,7 @@ export function get(id) {
        FROM page p JOIN space s ON s.id = p.space_id WHERE p.id = ?`
   ).get(id);
   if (!p) return null;
+  p.tags = db().prepare('SELECT t.name FROM page_tag pt JOIN tag t ON t.id = pt.tag_id WHERE pt.page_id = ? ORDER BY t.name').all(id).map((r) => r.name);
   p.occurrences = db().prepare(
     `SELECT o.*, e.pseudonym FROM entity_occurrence o
      LEFT JOIN protected_entity e ON e.id = o.entity_id
@@ -50,7 +51,7 @@ export function get(id) {
 }
 
 export function create({ space_key, parent_id = null, title = 'Untitled', body_html = '', type = 'note',
-                         sensitivity = null, template_key = null, owner = null }) {
+                         sensitivity = null, template_key = null, owner = null, tags = [] }) {
   const s = spaceByKey(space_key);
   if (!s) throw new Error(`unknown space: ${space_key}`);
   const info = db().prepare(
@@ -59,6 +60,10 @@ export function create({ space_key, parent_id = null, title = 'Untitled', body_h
   ).run(s.id, parent_id, title, body_html, htmlToText(body_html), type,
         sensitivity || s.default_sensitivity, template_key, owner);
   const id = info.lastInsertRowid;
+  for (const name of tags) {
+    db().prepare('INSERT OR IGNORE INTO tag (name) VALUES (?)').run(name);
+    db().prepare('INSERT OR IGNORE INTO page_tag (page_id, tag_id) SELECT ?, id FROM tag WHERE name = ?').run(id, name);
+  }
   guard.recordOccurrences(id, `${title}\n${htmlToText(body_html)}`);
   syncLinks(id, body_html);
   audit('page.create', `id=${id} title=${title}`);

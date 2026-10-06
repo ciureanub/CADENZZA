@@ -160,22 +160,44 @@ CREATE INDEX IF NOT EXISTS idx_occ_doc ON entity_occurrence(doc_id);
   {
     version: 3,
     description: 'Merge the Deployment Management space into Release Management',
+    up(d) { mergeSpace(d, 'deployment'); }
+  },
+  {
+    version: 4,
+    description: 'Merge Environment and Stakeholder Management into Release Management; tag pages with their former space',
     up(d) {
-      const rel = d.prepare("SELECT id FROM space WHERE key = 'release'").get();
-      const dep = d.prepare("SELECT id FROM space WHERE key = 'deployment'").get();
-      if (!dep) return; // fresh database: spaces are seeded after migrations, already merged
-      let relId = rel?.id;
-      if (!relId) relId = d.prepare("INSERT INTO space (key, name, glyph, position) VALUES ('release', 'Release Management', 'RM', 1)").run().lastInsertRowid;
-      // Deployment pages go after the existing top-level Release pages, keeping their own order.
-      const offset = d.prepare('SELECT COALESCE(MAX(position), 0) m FROM page WHERE space_id = ? AND parent_id IS NULL').get(relId).m;
-      d.prepare('UPDATE page SET space_id = ?, position = position + CASE WHEN parent_id IS NULL THEN ? ELSE 0 END WHERE space_id = ?')
-        .run(relId, offset + 1, dep.id);
-      d.prepare('DELETE FROM space WHERE id = ?').run(dep.id);
-      const order = d.prepare('SELECT id FROM space ORDER BY position, id').all();
-      order.forEach((s, i) => d.prepare('UPDATE space SET position = ? WHERE id = ?').run(i + 1, s.id));
+      mergeSpace(d, 'environment');
+      mergeSpace(d, 'stakeholder');
+      // Databases where v3 ran before it tagged: the seeded Deployment templates are recognisable by template key.
+      const keys = ['deployment-runbook', 'delta-manifest', 'pipeline-definition', 'smoke-checklist', 'change-record'];
+      for (const { id } of d.prepare(`SELECT id FROM page WHERE template_key IN (${keys.map(() => '?').join(',')})`).all(...keys)) tagPage(d, id, 'deployment');
     }
   }
 ];
+
+function tagPage(d, pageId, name) {
+  d.prepare('INSERT OR IGNORE INTO tag (name) VALUES (?)').run(name);
+  d.prepare('INSERT OR IGNORE INTO page_tag (page_id, tag_id) SELECT ?, id FROM tag WHERE name = ?').run(pageId, name);
+}
+
+/**
+ * Move every page of space `fromKey` (sub-pages included, hierarchy kept) into Release, after the existing
+ * top-level Release pages, tag each with `fromKey` so the former grouping stays searchable (tag:<key>),
+ * delete the space and renumber the rest. No-op when the space does not exist (fresh database).
+ */
+function mergeSpace(d, fromKey) {
+  const from = d.prepare('SELECT id FROM space WHERE key = ?').get(fromKey);
+  if (!from) return;
+  const relId = d.prepare("SELECT id FROM space WHERE key = 'release'").get()?.id
+    ?? d.prepare("INSERT INTO space (key, name, glyph, position) VALUES ('release', 'Release Management', 'RM', 1)").run().lastInsertRowid;
+  for (const { id } of d.prepare('SELECT id FROM page WHERE space_id = ?').all(from.id)) tagPage(d, id, fromKey);
+  const offset = d.prepare('SELECT COALESCE(MAX(position), 0) m FROM page WHERE space_id = ? AND parent_id IS NULL').get(relId).m;
+  d.prepare('UPDATE page SET space_id = ?, position = position + CASE WHEN parent_id IS NULL THEN ? ELSE 0 END WHERE space_id = ?')
+    .run(relId, offset + 1, from.id);
+  d.prepare('DELETE FROM space WHERE id = ?').run(from.id);
+  d.prepare('SELECT id FROM space ORDER BY position, id').all()
+    .forEach((s, i) => d.prepare('UPDATE space SET position = ? WHERE id = ?').run(i + 1, s.id));
+}
 
 function runMigrations(d) {
   // Always ensure the migration-tracking table exists first.

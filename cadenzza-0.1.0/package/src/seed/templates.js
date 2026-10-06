@@ -7,7 +7,7 @@ const h = (s) => s.trim();
 export const TEMPLATES = [
 /* ---------------------------------- RELEASE ---------------------------------- */
 {
-  space: 'release', key: 'release-plan', title: 'Release Plan — <release name>',
+  area: 'release', key: 'release-plan', title: 'Release Plan — <release name>',
   html: h(`
 <h2>1. Release identity</h2>
 <table><tbody>
@@ -31,7 +31,7 @@ export const TEMPLATES = [
 <table><tbody><tr><td>Role</td><td>Name</td><td>Date</td></tr><tr><td></td><td></td><td></td></tr></tbody></table>`)
 },
 {
-  space: 'release', key: 'go-no-go', title: 'Go / No-Go Decision Record',
+  area: 'release', key: 'go-no-go', title: 'Go / No-Go Decision Record',
   html: h(`
 <h2>Decision</h2>
 <table><tbody>
@@ -58,7 +58,7 @@ export const TEMPLATES = [
 <h2>Attendees and sign-off</h2>`)
 },
 {
-  space: 'release', key: 'raid', title: 'RAID Log',
+  area: 'release', key: 'raid', title: 'RAID Log',
   html: h(`
 <p><em class="hint">Risks · Assumptions · Issues · Dependencies. One row per item, owner mandatory, review weekly.</em></p>
 <table><tbody>
@@ -67,7 +67,7 @@ export const TEMPLATES = [
 </tbody></table>`)
 },
 {
-  space: 'release', key: 'cutover-plan', title: 'Cutover Plan',
+  area: 'release', key: 'cutover-plan', title: 'Cutover Plan',
   html: h(`
 <p><em class="hint">Timed, owner-per-step, with a named abort point. Rehearse it before you need it.</em></p>
 <table><tbody>
@@ -82,7 +82,7 @@ export const TEMPLATES = [
 <h2>Communication points</h2>`)
 },
 {
-  space: 'release', key: 'pir', title: 'Post-Implementation Review',
+  area: 'release', key: 'pir', title: 'Post-Implementation Review',
   html: h(`
 <h2>Outcome</h2>
 <table><tbody>
@@ -94,7 +94,7 @@ export const TEMPLATES = [
 <table><tbody><tr><td>Action</td><td>Owner</td><td>Due</td></tr><tr><td></td><td></td><td></td></tr></tbody></table>`)
 },
 {
-  space: 'release', key: 'dora', title: 'DORA Scorecard',
+  area: 'release', key: 'dora', title: 'DORA Scorecard',
   html: h(`
 <p><em class="hint">Four metrics, per release train, with an evidence link on every number. A metric without a source is an opinion.</em></p>
 <table><tbody>
@@ -107,7 +107,7 @@ export const TEMPLATES = [
 },
 /* -------------------------------- DEPLOYMENT --------------------------------- */
 {
-  space: 'release', key: 'deployment-runbook', title: 'Deployment Runbook',
+  area: 'deployment', key: 'deployment-runbook', title: 'Deployment Runbook',
   html: h(`
 <h2>Scope of this deployment</h2>
 <table><tbody><tr><td>Source branch</td><td></td></tr><tr><td>Target environment</td><td></td></tr>
@@ -124,7 +124,7 @@ export const TEMPLATES = [
 <p><em class="hint">Tested? When? How long did it take?</em></p>`)
 },
 {
-  space: 'release', key: 'delta-manifest', title: 'Delta Package Manifest',
+  area: 'deployment', key: 'delta-manifest', title: 'Delta Package Manifest',
   html: h(`
 <table><tbody>
 <tr><td>Base ref</td><td></td></tr><tr><td>Head ref</td><td></td></tr>
@@ -137,7 +137,7 @@ export const TEMPLATES = [
 <h2>Excluded by policy</h2>`)
 },
 {
-  space: 'release', key: 'pipeline-definition', title: 'Pipeline Definition',
+  area: 'deployment', key: 'pipeline-definition', title: 'Pipeline Definition',
   html: h(`
 <h2>Stages</h2>
 <table><tbody><tr><td>Stage</td><td>Trigger</td><td>Gate</td><td>Owner</td></tr>
@@ -150,7 +150,7 @@ export const TEMPLATES = [
 <p><em class="hint">Names and where they live. Never values.</em></p>`)
 },
 {
-  space: 'release', key: 'smoke-checklist', title: 'Smoke Test Checklist',
+  area: 'deployment', key: 'smoke-checklist', title: 'Smoke Test Checklist',
   html: h(`
 <table><tbody><tr><td>#</td><td>Check</td><td>Expected</td><td>Owner</td><td>Result</td></tr>
 <tr><td>1</td><td>Login and landing page</td><td></td><td></td><td></td></tr>
@@ -159,7 +159,7 @@ export const TEMPLATES = [
 <tr><td>4</td><td>Scheduled jobs running</td><td></td><td></td><td></td></tr></tbody></table>`)
 },
 {
-  space: 'release', key: 'change-record', title: 'Change Record (RFC)',
+  area: 'deployment', key: 'change-record', title: 'Change Record (RFC)',
   html: h(`
 <table><tbody>
 <tr><td>Change number</td><td></td></tr><tr><td>Type</td><td>standard / normal / emergency</td></tr>
@@ -171,7 +171,7 @@ export const TEMPLATES = [
 },
 /* ------------------------------- ENVIRONMENT --------------------------------- */
 {
-  space: 'environment', key: 'env-matrix', title: 'Environment Inventory Matrix',
+  area: 'environment', key: 'env-matrix', title: 'Environment Inventory Matrix',
   html: h(`
 <p><em class="hint">The single most useful page in this space. Keep it current or delete it — a stale matrix is worse than none.</em></p>
 <table><tbody>
@@ -182,7 +182,7 @@ export const TEMPLATES = [
 </tbody></table>`)
 },
 {
-  space: 'environment', key: 'refresh-runbook', title: 'Environment Refresh Runbook',
+  area: 'environment', key: 'refresh-runbook', title: 'Environment Refresh Runbook',
   html: h(`
 <h2>Pre-refresh</h2>
 <p><em class="hint">What must be captured before the environment is overwritten: config, connected apps, users, custom settings, scheduled jobs.</em></p>
@@ -194,7 +194,7 @@ export const TEMPLATES = [
 <h2>Verification</h2><h2>Typical duration</h2>`)
 },
 {
-  space: 'environment', key: 'masking-plan', title: 'Data Seeding and Masking Plan',
+  area: 'environment', key: 'masking-plan', title: 'Data Seeding and Masking Plan',
   html: h(`
 <h2>Legal basis</h2>
 <p><em class="hint">Production data in a lower environment needs a stated basis and a masking standard. Pseudonymised data is still personal data.</em></p>
@@ -204,14 +204,14 @@ export const TEMPLATES = [
 <h2>Seed data sets</h2><h2>Verification</h2>`)
 },
 {
-  space: 'environment', key: 'drift-report', title: 'Configuration Drift Report',
+  area: 'environment', key: 'drift-report', title: 'Configuration Drift Report',
   html: h(`
 <table><tbody><tr><td>Component</td><td>Expected</td><td>Actual</td><td>Environment</td><td>Detected</td><td>Action</td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
 <h2>Root cause</h2><h2>Prevention</h2>`)
 },
 {
-  space: 'environment', key: 'endpoint-matrix', title: 'Integration Endpoint Matrix',
+  area: 'environment', key: 'endpoint-matrix', title: 'Integration Endpoint Matrix',
   html: h(`
 <table><tbody>
 <tr><td>Integration</td><td>Direction</td><td>Protocol</td><td>Endpoint (per env)</td><td>Auth</td><td>Owner</td><td>Runbook</td></tr>
@@ -221,7 +221,7 @@ export const TEMPLATES = [
 },
 /* ------------------------------- STAKEHOLDER --------------------------------- */
 {
-  space: 'stakeholder', key: 'stakeholder-register', title: 'Stakeholder Register',
+  area: 'stakeholder', key: 'stakeholder-register', title: 'Stakeholder Register',
   html: h(`
 <table><tbody>
 <tr><td>Name</td><td>Role</td><td>Organisation</td><td>Interest</td><td>Influence</td><td>Stance</td><td>Owner</td></tr>
@@ -230,7 +230,7 @@ export const TEMPLATES = [
 <p><em class="hint">Personal data. Defaults to Client-Confidential and routes through Entity Guard.</em></p>`)
 },
 {
-  space: 'stakeholder', key: 'raci', title: 'RACI Matrix',
+  area: 'stakeholder', key: 'raci', title: 'RACI Matrix',
   html: h(`
 <table><tbody>
 <tr><td>Activity</td><td>Release Mgr</td><td>Tech Lead</td><td>QA Lead</td><td>Product Owner</td><td>Ops</td></tr>
@@ -242,7 +242,7 @@ export const TEMPLATES = [
 <p><em class="hint">One A per row. If you have two, you have none.</em></p>`)
 },
 {
-  space: 'stakeholder', key: 'comms-plan', title: 'Communication Plan',
+  area: 'stakeholder', key: 'comms-plan', title: 'Communication Plan',
   html: h(`
 <table><tbody>
 <tr><td>Audience</td><td>Message</td><td>Channel</td><td>Cadence</td><td>Owner</td><td>Format</td></tr>
@@ -252,7 +252,7 @@ export const TEMPLATES = [
 </tbody></table>`)
 },
 {
-  space: 'stakeholder', key: 'golive-comms', title: 'Go-Live Communication Pack',
+  area: 'stakeholder', key: 'golive-comms', title: 'Go-Live Communication Pack',
   html: h(`
 <h2>Executive summary</h2>
 <p><em class="hint">Five bullets maximum. What shipped, what it enables, what it cost, what is next, what needs a decision.</em></p>
@@ -265,7 +265,7 @@ export const TEMPLATES = [
 <tr><td>1</td><td></td><td></td><td></td></tr></tbody></table>`)
 },
 {
-  space: 'stakeholder', key: 'decision-log', title: 'Decision Log (ADR)',
+  area: 'stakeholder', key: 'decision-log', title: 'Decision Log (ADR)',
   html: h(`
 <table><tbody>
 <tr><td>ID</td><td>Date</td><td>Decision</td><td>Context</td><td>Alternatives rejected</td><td>Decided by</td><td>Reversible?</td></tr>
@@ -276,20 +276,21 @@ export const TEMPLATES = [
 ];
 
 export function seedTemplates(pages) {
+  // Everything lives in Release Management; the former space survives as a tag (search: tag:environment).
+  const sensByArea = {
+    stakeholder: 'Client-Confidential',  // personal data
+    environment: 'Internal',             // infrastructure details
+    release: 'Public',                   // structured templates, no data by default
+    deployment: 'Public'
+  };
   let created = 0;
   for (const t of TEMPLATES) {
-    const exists = pages.tree(t.space).some((p) => p.title === t.title && p.type === 'template');
-    if (exists) continue;
-    // Determine sensitivity by space
-    const sensBySpace = {
-      stakeholder: 'Client-Confidential',  // personal data
-      environment: 'Internal',             // infrastructure details
-      release: 'Public'                    // structured templates, no data by default
-    };
+    if (pages.tree('release').some((p) => p.title === t.title && p.type === 'template')) continue;
     pages.create({
-      space_key: t.space, title: t.title, body_html: t.html,
+      space_key: 'release', title: t.title, body_html: t.html,
       type: 'template', template_key: t.key,
-      sensitivity: sensBySpace[t.space] || 'Internal'
+      sensitivity: sensByArea[t.area] || 'Internal',
+      tags: t.area === 'release' ? [] : [t.area]
     });
     created++;
   }

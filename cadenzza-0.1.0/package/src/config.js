@@ -46,13 +46,14 @@ export const RAG = {
 export const SENSITIVITY = ['Public', 'Internal', 'Client-Confidential', 'Restricted'];
 
 export const SPACES = [
-  { key: 'release',     name: 'Release Management',     glyph: 'RM', position: 1 },
-  { key: 'environment', name: 'Environment Management', glyph: 'EM', position: 2 },
-  { key: 'stakeholder', name: 'Stakeholder Management', glyph: 'SM', position: 3 }
+  { key: 'release', name: 'Release Management', glyph: 'RM', position: 1 }
 ];
 
-/** Retired space keys still accepted on input (CLI, API, search filters). Deployment merged into Release in 0.2. */
-export const SPACE_ALIASES = { deployment: 'release' };
+/**
+ * Retired space keys still accepted on input (CLI, API, search filters). In 0.2 Deployment, Environment and
+ * Stakeholder Management were merged into Release Management; their pages carry the old key as a tag.
+ */
+export const SPACE_ALIASES = { deployment: 'release', environment: 'release', stakeholder: 'release' };
 export const canonicalSpace = (key) => (key == null ? key : SPACE_ALIASES[String(key).toLowerCase()] || key);
 
 /** Storage mode. store-and-mask is the default; see README. */
