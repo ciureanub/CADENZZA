@@ -192,7 +192,7 @@ async function openPage(id) {
   $('#wrap').innerHTML = `<h2 class="sec">${esc(PAGE.title)}</h2>
   <div class="row">
     <input id="title" value="${esc(PAGE.title)}">
-    <select id="space"><option value="stakeholder"${SPACE==='stakeholder'?' selected':''}>Stakeholder</option><option value="environment"${SPACE==='environment'?' selected':''}>Environment</option><option value="release"${SPACE==='release'?' selected':''}>Release</option></select>
+    <select id="space">${META.spaces.map((s) => `<option value="${s.key}"${s.key === PAGE.space_key ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
     <select id="sensitivity"><option value="Public"${PAGE.sensitivity==='Public'?' selected':''}>Public</option><option value="Restricted"${PAGE.sensitivity==='Restricted'?' selected':''}>Restricted</option><option value="Client-Confidential"${PAGE.sensitivity==='Client-Confidential'?' selected':''}>Client-Confidential</option></select>
     <button class="btn" onclick="save()">Save</button>
     <button class="btn" onclick="exportPage()">Export</button>
@@ -235,8 +235,9 @@ async function save() {
     await api('/page/' + PAGE.id, { method: 'PATCH', body: { title, space, sensitivity, body_html } });
     PAGE.title = title;
     DIRTY = false;
-    toast('Saved');
-    pick(SPACE);
+    toast(space !== PAGE.space_key ? 'Saved and moved' : 'Saved');
+    PAGE.space_key = space;
+    pick(space);
   } catch (e) {
     toast('Save error: ' + (e.message || e));
   }

@@ -21,7 +21,7 @@ program.name('cadenzza')
   .version('0.2.0');
 
 program.command('init')
-  .description('Create the database, seed the four spaces and the deliverable templates')
+  .description('Create the database, seed the three spaces and the deliverable templates')
   .option('--entities <file>', 'JSON file of protected entities to seed')
   .action((opts) => {
     db();

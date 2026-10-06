@@ -107,7 +107,7 @@ export const TEMPLATES = [
 },
 /* -------------------------------- DEPLOYMENT --------------------------------- */
 {
-  space: 'deployment', key: 'deployment-runbook', title: 'Deployment Runbook',
+  space: 'release', key: 'deployment-runbook', title: 'Deployment Runbook',
   html: h(`
 <h2>Scope of this deployment</h2>
 <table><tbody><tr><td>Source branch</td><td></td></tr><tr><td>Target environment</td><td></td></tr>
@@ -124,7 +124,7 @@ export const TEMPLATES = [
 <p><em class="hint">Tested? When? How long did it take?</em></p>`)
 },
 {
-  space: 'deployment', key: 'delta-manifest', title: 'Delta Package Manifest',
+  space: 'release', key: 'delta-manifest', title: 'Delta Package Manifest',
   html: h(`
 <table><tbody>
 <tr><td>Base ref</td><td></td></tr><tr><td>Head ref</td><td></td></tr>
@@ -137,7 +137,7 @@ export const TEMPLATES = [
 <h2>Excluded by policy</h2>`)
 },
 {
-  space: 'deployment', key: 'pipeline-definition', title: 'Pipeline Definition',
+  space: 'release', key: 'pipeline-definition', title: 'Pipeline Definition',
   html: h(`
 <h2>Stages</h2>
 <table><tbody><tr><td>Stage</td><td>Trigger</td><td>Gate</td><td>Owner</td></tr>
@@ -150,7 +150,7 @@ export const TEMPLATES = [
 <p><em class="hint">Names and where they live. Never values.</em></p>`)
 },
 {
-  space: 'deployment', key: 'smoke-checklist', title: 'Smoke Test Checklist',
+  space: 'release', key: 'smoke-checklist', title: 'Smoke Test Checklist',
   html: h(`
 <table><tbody><tr><td>#</td><td>Check</td><td>Expected</td><td>Owner</td><td>Result</td></tr>
 <tr><td>1</td><td>Login and landing page</td><td></td><td></td><td></td></tr>
@@ -159,7 +159,7 @@ export const TEMPLATES = [
 <tr><td>4</td><td>Scheduled jobs running</td><td></td><td></td><td></td></tr></tbody></table>`)
 },
 {
-  space: 'deployment', key: 'change-record', title: 'Change Record (RFC)',
+  space: 'release', key: 'change-record', title: 'Change Record (RFC)',
   html: h(`
 <table><tbody>
 <tr><td>Change number</td><td></td></tr><tr><td>Type</td><td>standard / normal / emergency</td></tr>
@@ -284,8 +284,7 @@ export function seedTemplates(pages) {
     const sensBySpace = {
       stakeholder: 'Client-Confidential',  // personal data
       environment: 'Internal',             // infrastructure details
-      release: 'Public',                   // structured templates, no data by default
-      deployment: 'Public'                 // structured templates, no data by default
+      release: 'Public'                    // structured templates, no data by default
     };
     pages.create({
       space_key: t.space, title: t.title, body_html: t.html,

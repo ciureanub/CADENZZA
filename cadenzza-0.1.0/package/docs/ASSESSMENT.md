@@ -67,7 +67,7 @@ PPTX added to the ingest formats (user decision, 2026-10-04).
 | U1 | `web/index.html:247` | `/&lt;\/mark&gt;/g` is a regex syntax error, so the **whole UI script never ran** (no spaces, tree or buttons) | fixed; `test/ui.test.js` compiles the script |
 | U2 | `web/index.html:124-131` (`api()`) | sends `content-type: application/json` with no body on DELETE; Fastify answers 400, so **Retire and Purge never worked** | fixed: header only with a body |
 | U3 | `web/index.html:143`, `:314` | Review button label replaced by the bare count, or by nothing | fixed: "Review (n)" |
-| U4 | `web/index.html:169` | page editor's space select lacks Deployment, and PATCH ignores `space` anyway | open (existing behaviour; not changed) |
+| U4 | `web/index.html:169` | page editor's space select lacks Deployment, and PATCH ignores `space` anyway | fixed: Deployment merged into Release (migration v3, user decision); select built from the space list; PATCH `space` moves the page and its sub-pages |
 | U5 | design | the sidebar tree shows real page titles (store-and-mask), while Library/Ask show pseudonyms | fixed (Phase 7, user decision): source-capture titles are masked in the tree |
 | U6 | `web/index.html` (Phase 6) | files dropped outside the Library drop zone were opened by the browser, leaving the app | fixed: window-wide drop opens the Library and ingests |
 

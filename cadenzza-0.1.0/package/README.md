@@ -54,7 +54,7 @@ Ingest **refuses to run while the registry is empty** — otherwise client names
 
 ## What's in it
 
-**Four spaces, seeded deliverable templates** — real structures with inline guidance, not empty pages (Release Plan, Go/No-Go Record, RAID Log, Cutover Plan, PIR, DORA Scorecard, Deployment Runbook, Delta Package Manifest, Environment Inventory, Refresh Runbook, Stakeholder Register, RACI, Communication Plan, ADR, …).
+**Three spaces — Release Management (release and deployment), Environment Management, Stakeholder Management — with seeded deliverable templates**: real structures with inline guidance, not empty pages (Release Plan, Go/No-Go Record, RAID Log, Cutover Plan, PIR, DORA Scorecard, Deployment Runbook, Delta Package Manifest, Environment Inventory, Refresh Runbook, Stakeholder Register, RACI, Communication Plan, ADR, …). Deployment Management was merged into Release Management in 0.2; `deployment` is still accepted as a space key (`--space`, `space:` filters, API) and means `release`. Move a page to another space with the space selector in the editor.
 
 **Editor** — rich text with a `</> HTML` source toggle, tables, `[[wiki links]]` with backlinks, revision history on every save.
 

@@ -1,5 +1,6 @@
 import { db, audit } from './db/index.js';
 import * as guard from './entity/guard.js';
+import { canonicalSpace } from './config.js';
 
 /** Cheap, dependency-free HTML -> text for indexing. */
 export function htmlToText(html) {
@@ -20,7 +21,7 @@ export function spaces() {
 }
 
 export function spaceByKey(key) {
-  return db().prepare('SELECT * FROM space WHERE key = ?').get(key);
+  return db().prepare('SELECT * FROM space WHERE key = ?').get(canonicalSpace(key));
 }
 
 export function tree(spaceKey) {
@@ -28,7 +29,7 @@ export function tree(spaceKey) {
     `SELECT p.id, p.parent_id, p.title, p.type, p.sensitivity, p.status, p.updated_at, p.position
        FROM page p JOIN space s ON s.id = p.space_id
       WHERE s.key = ? ORDER BY p.type DESC, p.position, p.title`
-  ).all(spaceKey);
+  ).all(canonicalSpace(spaceKey));
 }
 
 export function get(id) {
@@ -67,6 +68,7 @@ export function create({ space_key, parent_id = null, title = 'Untitled', body_h
 export function update(id, patch) {
   const before = db().prepare('SELECT * FROM page WHERE id = ?').get(id);
   if (!before) throw new Error('not found');
+  if (patch.space !== undefined && !spaceByKey(patch.space)) throw new Error(`unknown space: ${patch.space}`);
 
   if (patch.body_html !== undefined || patch.title !== undefined) {
     db().prepare('INSERT INTO revision (page_id, title, body_html, note) VALUES (?, ?, ?, ?)')
@@ -81,11 +83,26 @@ export function update(id, patch) {
   if (patch.body_html !== undefined) { sets.push('body_text = ?'); vals.push(htmlToText(patch.body_html)); }
   sets.push("updated_at = datetime('now')");
   db().prepare(`UPDATE page SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id);
+  if (patch.space !== undefined) moveToSpace(id, patch.space);
 
   const after = db().prepare('SELECT * FROM page WHERE id = ?').get(id);
   guard.recordOccurrences(id, `${after.title}\n${after.body_text}`);
   syncLinks(id, after.body_html);
   return get(id);
+}
+
+/** Move a page and its sub-pages to another space; the page becomes top-level there. */
+function moveToSpace(id, spaceKey) {
+  const s = spaceByKey(spaceKey);
+  if (!s) throw new Error(`unknown space: ${spaceKey}`);
+  const page = db().prepare('SELECT space_id FROM page WHERE id = ?').get(id);
+  if (page.space_id === s.id) return;
+  db().transaction(() => {
+    db().prepare(`WITH RECURSIVE sub(id) AS (SELECT ? UNION ALL SELECT p.id FROM page p JOIN sub ON p.parent_id = sub.id)
+      UPDATE page SET space_id = ? WHERE id IN (SELECT id FROM sub)`).run(id, s.id);
+    db().prepare('UPDATE page SET parent_id = NULL WHERE id = ?').run(id);
+  })();
+  audit('page.move', `id=${id} space=${s.key}`);
 }
 
 export function remove(id) {

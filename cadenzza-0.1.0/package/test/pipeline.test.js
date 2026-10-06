@@ -23,7 +23,7 @@ const LEAK = /contoso|northwind|jane\.doe/i;
 test('migration v2 adds entity_occurrence.doc_id', () => {
   const cols = db().prepare('PRAGMA table_info(entity_occurrence)').all().map((c) => c.name);
   assert.ok(cols.includes('doc_id'));
-  assert.deepEqual(db().prepare('SELECT version FROM schema_migration ORDER BY version').all().map((r) => r.version), [1, 2]);
+  assert.deepEqual(db().prepare('SELECT version FROM schema_migration ORDER BY version').all().map((r) => r.version), [1, 2, 3]);
 });
 
 test('no protected surface survives in any chunk, title, filename or warning of any fixture', async () => {

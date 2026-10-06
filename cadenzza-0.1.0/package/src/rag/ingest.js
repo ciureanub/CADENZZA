@@ -19,7 +19,7 @@ import * as guard from '../entity/guard.js';
 import * as vault from '../entity/vault.js';
 import * as pages from '../pages.js';
 import { getSetting, setSetting, audit } from '../db/index.js';
-import { paths, SENSITIVITY, RAG } from '../config.js';
+import { paths, SENSITIVITY, RAG, canonicalSpace } from '../config.js';
 import { prepareDocument } from './pipeline.js';
 import { chunkId, uuidv5, sha256, CHUNKER_VERSION, chunkerConfig } from './chunk.js';
 import { SUPPORTED } from './extract/index.js';
@@ -41,7 +41,7 @@ export const chunkOptions = () => ({
 /** Stable, non-reversible doc id: HMAC (vault key) of space + source path. Same file, same id. */
 export function docIdFor(space, sourceKey) {
   const norm = String(sourceKey).replace(/\\/g, '/').toLowerCase();
-  return uuidv5(crypto.createHmac('sha256', vault.key()).update(`doc:${space}:${norm}`).digest('hex'));
+  return uuidv5(crypto.createHmac('sha256', vault.key()).update(`doc:${canonicalSpace(space)}:${norm}`).digest('hex'));
 }
 
 function emit(docId, stage, extra = {}) {
@@ -126,7 +126,8 @@ const toRows = (docId, chunks, base) => chunks.map((c) => ({
  */
 export async function ingestFile(o) {
   const t0 = performance.now();
-  const { buffer, filename, sourceKey = filename, space = 'release', force = false, allowEmptyRegistry = false } = o;
+  const { buffer, filename, sourceKey = filename, force = false, allowEmptyRegistry = false } = o;
+  const space = canonicalSpace(o.space || 'release');
   if (!allowEmptyRegistry && guard.registrySize() === 0) {
     throw new Error('protected-entity registry is empty: register clients first (cadenzza entities add), or pass --allow-empty-registry');
   }

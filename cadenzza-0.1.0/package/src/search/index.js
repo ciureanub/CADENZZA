@@ -1,4 +1,5 @@
 import { db } from '../db/index.js';
+import { canonicalSpace } from '../config.js';
 
 /* ---------------- field filters: space: tag: type: sensitivity: owner: before: after: ---------------- */
 
@@ -21,7 +22,7 @@ export function parseQuery(raw) {
 function whereClause(filters) {
   const where = [];
   const params = [];
-  if (filters.space)       { where.push('s.key = ?');            params.push(filters.space); }
+  if (filters.space)       { where.push('s.key = ?');            params.push(canonicalSpace(filters.space)); }
   if (filters.type)        { where.push('p.type = ?');           params.push(filters.type); }
   if (filters.sensitivity) { where.push('p.sensitivity = ?');    params.push(filters.sensitivity); }
   if (filters.owner)       { where.push('p.owner = ?');          params.push(filters.owner); }

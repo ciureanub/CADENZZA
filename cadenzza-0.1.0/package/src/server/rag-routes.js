@@ -8,7 +8,7 @@ import * as guard from '../entity/guard.js';
 import * as rag from '../rag/ingest.js';
 import * as mongo from '../rag/store/mongo.js';
 import { SUPPORTED } from '../rag/extract/index.js';
-import { SENSITIVITY, RAG } from '../config.js';
+import { SENSITIVITY, RAG, canonicalSpace } from '../config.js';
 import { getSetting } from '../db/index.js';
 import * as pages from '../pages.js';
 
@@ -42,7 +42,7 @@ export async function registerRagRoutes(app) {
   /* ---- drop / upload: queue each file, answer at once; progress arrives over /api/rag/events ---- */
   app.post('/api/rag/ingest', async (req, reply) => {
     if (!(req.headers['content-type'] || '').includes('multipart/form-data')) return reply.code(400).send({ error: 'multipart/form-data required' });
-    const space = String(req.query.space || 'release');
+    const space = canonicalSpace(String(req.query.space || 'release'));
     const sensitivity = req.query.sensitivity ? String(req.query.sensitivity) : null;
     if (!pages.spaceByKey(space)) return reply.code(400).send({ error: `unknown space: ${space}` });
     if (sensitivity && !SENSITIVITY.includes(sensitivity)) return reply.code(400).send({ error: `invalid sensitivity: ${sensitivity}` });

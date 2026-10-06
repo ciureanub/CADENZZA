@@ -68,7 +68,7 @@ Supported: **PDF, DOCX, DOC, PPTX, HTML, Markdown, TXT, MHTML** — single files
 1. **Drag files or a folder onto the browser window** — anywhere. The window shows
    *Drop to add to the Library*; let go, and the **Library** opens and starts ingesting.
    (Or click **Library** → **Choose files** / **Choose folder**.)
-2. Optional, before dropping: in the Library, pick the **space** the file's page goes into and a
+2. Optional, before dropping: in the Library, pick the **space** (Release, Environment or Stakeholder Management) the file's page goes into and a
    **sensitivity**. Files marked **Restricted** are recorded but not embedded (so not answerable)
    unless you turn that on in settings.
 3. Watch the progress list. Each file ends in one of:
@@ -127,7 +127,7 @@ Command line: `cadenzza ask "What is our rollback procedure?"`
 
 In **Library**, each document row has:
 
-- **page** — open its mirror page in the wiki (masked title, searchable).
+- **page** — open its mirror page in the wiki (masked title, searchable). To move any page to another space, open it, change the space selector next to the title, **Save**.
 - **re-ingest** — process it again from the stored copy. Greyed out for files ingested before 0.2
   stored copies; fix by running `cadenzza rag ingest <folder> --force` once.
 - **delete** — removes it from answers, the index and the wiki.

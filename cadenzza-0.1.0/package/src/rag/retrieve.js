@@ -8,6 +8,7 @@
  */
 import * as guard from '../entity/guard.js';
 import { getSetting } from '../db/index.js';
+import { canonicalSpace } from '../config.js';
 import { rrf } from '../search/index.js';
 import { getEmbedder } from './embed/index.js';
 import { activeModel } from './ingest.js';
@@ -25,7 +26,8 @@ export async function retrieve(question, o = {}) {
   const k = Number(o.k || getSetting('rag_top_k', '6'));
   const candidates = Math.max(o.candidates || 20, k);
   const mode = o.mode || getSetting('rag_retrieval', 'hybrid');
-  const filter = o.filter || {};
+  const filter = { ...(o.filter || {}) };
+  if (filter.space) filter.space = canonicalSpace(filter.space);
   const question_masked = guard.mask(String(question).trim());
   guard.assertClean(question_masked, 'retrieval query');
 

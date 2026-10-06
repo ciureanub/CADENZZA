@@ -47,10 +47,13 @@ export const SENSITIVITY = ['Public', 'Internal', 'Client-Confidential', 'Restri
 
 export const SPACES = [
   { key: 'release',     name: 'Release Management',     glyph: 'RM', position: 1 },
-  { key: 'deployment',  name: 'Deployment Management',  glyph: 'DM', position: 2 },
-  { key: 'environment', name: 'Environment Management', glyph: 'EM', position: 3 },
-  { key: 'stakeholder', name: 'Stakeholder Management', glyph: 'SM', position: 4 }
+  { key: 'environment', name: 'Environment Management', glyph: 'EM', position: 2 },
+  { key: 'stakeholder', name: 'Stakeholder Management', glyph: 'SM', position: 3 }
 ];
+
+/** Retired space keys still accepted on input (CLI, API, search filters). Deployment merged into Release in 0.2. */
+export const SPACE_ALIASES = { deployment: 'release' };
+export const canonicalSpace = (key) => (key == null ? key : SPACE_ALIASES[String(key).toLowerCase()] || key);
 
 /** Storage mode. store-and-mask is the default; see README. */
 export const DEFAULT_SETTINGS = {

@@ -117,7 +117,7 @@ it('upload -> SSE progress through indexed -> documents list -> mirror page', as
   assert.equal(docs.length, 2);
   for (const d of docs) {
     assert.equal(d.status, 'ready');
-    assert.equal(d.space, 'deployment');
+    assert.equal(d.space, 'release', 'retired space key "deployment" resolves to release');
     assert.ok(d.has_source && d.page_id && d.chunk_count > 0);
     assert.equal(pages.get(d.page_id).type, 'source-capture');
   }
